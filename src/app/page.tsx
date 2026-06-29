@@ -1,15 +1,20 @@
+'use client';
+
+import dynamic from 'next/dynamic';
 import Dashboard from '../components/Dashboard';
-import NetworkStatus from '../components/NetworkStatus';
+
+// Carregar o NetworkStatus dinamicamente sem SSR, pois ele utiliza o Dexie.js/IndexedDB (recurso exclusivo do navegador)
+const NetworkStatus = dynamic(
+  () => import('../components/NetworkStatus'),
+  { ssr: false }
+);
 
 export default function HomePage() {
   return (
     <div style={styles.container}>
-      {/* Indicador de Status Offline e Sincronização na parte superior do Dashboard */}
       <div style={styles.statusBar}>
         <NetworkStatus />
       </div>
-      
-      {/* Componente principal do Dashboard Web */}
       <Dashboard />
     </div>
   );

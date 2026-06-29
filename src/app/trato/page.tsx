@@ -1,22 +1,31 @@
-import FormTrato from '../../components/FormTrato';
-import NetworkStatus from '../../components/NetworkStatus';
+'use client';
+
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+
+// Carregar componentes dinamicamente desativando SSR, pois dependem de IndexedDB (Dexie) no navegador
+const NetworkStatus = dynamic(
+  () => import('../../components/NetworkStatus'),
+  { ssr: false }
+);
+
+const FormTrato = dynamic(
+  () => import('../../components/FormTrato'),
+  { ssr: false }
+);
 
 export default function TratoPage() {
   return (
     <div style={styles.container}>
-      {/* Botão de Retorno */}
       <div style={styles.header}>
         <Link href="/" style={styles.backBtn}>
           <ArrowLeft size={16} style={{ marginRight: '6px' }} /> Voltar ao Painel
         </Link>
       </div>
 
-      {/* Monitor de rede com indicadores de fila pendente no curral */}
       <NetworkStatus />
 
-      {/* Formulário móvel de lançamento */}
       <div style={styles.formWrapper}>
         <FormTrato />
       </div>
