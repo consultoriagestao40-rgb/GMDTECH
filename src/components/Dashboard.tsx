@@ -14,6 +14,7 @@ interface LoteStats {
   dias_confinamento: number;
   peso_medio_entrada: number;
   peso_medio_atual: number;
+  peso_total_entrada: number;
   gmd_lote: number;
   custo_aquisicao: number;
   custo_tratos_total: number;
@@ -453,6 +454,20 @@ export default function Dashboard() {
               </div>
               <div style={styles.cardFooter}>
                 Aquisição: R$ {activeLote.custo_aquisicao.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} | Tratos: R$ {activeLote.custo_tratos_total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+              </div>
+            </div>
+
+            {/* PESO VIVO ENTRADA */}
+            <div className="glass-card" style={styles.card}>
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>Peso Vivo de Entrada</span>
+                <Scale size={20} color="var(--color-brand)" />
+              </div>
+              <div style={styles.cardValue}>
+                {Number(activeLote.peso_total_entrada).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} <span style={styles.unit}>kg</span>
+              </div>
+              <div style={styles.cardFooter}>
+                Média inicial: {activeLote.peso_medio_entrada} kg/cabeça ({activeLote.cabecas_totais} cab.)
               </div>
             </div>
 

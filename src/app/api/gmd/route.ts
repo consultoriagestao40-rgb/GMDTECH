@@ -205,13 +205,15 @@ export async function GET(request: Request) {
         dias_confinamento: diasConfinamento,
         peso_medio_entrada: Math.round(pesoMedioEntrada),
         peso_medio_atual: pesoMedioAtual,
+        peso_total_entrada: pesoTotalEntrada,
         gmd_lote: Math.max(0, gmdLote),
         custo_aquisicao: custoAquisicao,
         custo_tratos_total: custoTratosTotal,
         custo_total_lote: custoAquisicao + custoTratosTotal,
         arrobas_produzidas_total: arrobasProduzidasTotal,
         custo_por_arroba_produzida: custoPorArrobaProduzida,
-        status: lote.status
+        status: lote.status,
+        rendimento_carcaca_previsto: parseFloat(lote.rendimento_carcaca_previsto)
       };
     }));
 
