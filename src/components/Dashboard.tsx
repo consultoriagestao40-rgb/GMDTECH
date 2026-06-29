@@ -400,11 +400,21 @@ export default function Dashboard() {
     const gmdEst = activeLote.gmd_estimado || 1.500;
 
     // Configurar pontos iniciais e dados baseados no modo de exibição (Lote ou Individual)
-    let pesoIni = activeLote.peso_medio_entrada || 300;
-    let titleReal = 'Realizado (Média do Lote)';
+    let pesoIni = 300;
+    let titleReal = 'Realizado';
     let realPointsRaw: PesagemHistorico[] = [];
 
-    if (chartViewMode === 'individual') {
+    if (chartViewMode === 'lote') {
+      // MODO LOTE: Peso TOTAL do Lote
+      pesoIni = Number(activeLote.peso_total_entrada) || 14000;
+      titleReal = 'Realizado (Peso Total do Lote)';
+      // Multiplica os pesos médios históricos pela quantidade de cabeças ativas para obter o peso total do lote
+      realPointsRaw = historicoPesagens.map(p => ({
+        ...p,
+        peso: p.peso * activeLote.qtd_cabecas
+      }));
+    } else {
+      // MODO INDIVIDUAL: Peso Individual de um Boi
       if (loadingAnimalChart) {
         return (
           <div style={styles.emptyChart}>
@@ -425,12 +435,12 @@ export default function Dashboard() {
       pesoIni = activeAnimal.peso_entrada;
       titleReal = `Realizado (Boi ${activeAnimal.brinco})`;
       realPointsRaw = [...animalHistoricoPesagens];
-    } else {
-      realPointsRaw = [...historicoPesagens];
     }
 
     // Linha Teórica de Projeção (Meta)
-    const pesoProjetadoFim = pesoIni + gmdEst * ciclo_dias;
+    // Para o lote: cresce gmdEst * activeLote.qtd_cabecas por dia. Para o boi: cresce gmdEst por dia.
+    const gmdDiario = chartViewMode === 'lote' ? (gmdEst * activeLote.qtd_cabecas) : gmdEst;
+    const pesoProjetadoFim = pesoIni + gmdDiario * ciclo_dias;
 
     // Coletar pesos reais ordenados cronologicamente
     realPointsRaw.sort((a, b) => (a.dias || 0) - (b.dias || 0));
