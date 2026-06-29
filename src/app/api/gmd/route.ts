@@ -130,7 +130,7 @@ export async function GET(request: Request) {
 
     // 2. Retornar dados agregados de todos os lotes para o Dashboard
     const lotesDb = await sql`
-      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, dieta_id
+      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias
       FROM lotes 
       ORDER BY status ASC, data_entrada DESC
     `;
@@ -252,8 +252,7 @@ export async function GET(request: Request) {
         taxa_adaptacao: parseFloat(lote.taxa_adaptacao),
         taxa_engorda: parseFloat(lote.taxa_engorda),
         gmd_estimado: parseFloat(lote.gmd_estimado),
-        ciclo_dias: parseInt(lote.ciclo_dias),
-        dieta_id: lote.dieta_id ? parseInt(lote.dieta_id) : null
+        ciclo_dias: parseInt(lote.ciclo_dias)
       };
     }));
 

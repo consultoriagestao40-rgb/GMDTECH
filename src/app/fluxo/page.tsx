@@ -55,6 +55,7 @@ export default function FluxoPage() {
   const [dietas, setDietas] = useState<Dieta[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingLoteDetalhe, setLoadingLoteDetalhe] = useState<boolean>(false);
+  const [selectedDietaId, setSelectedDietaId] = useState<string>('');
 
   // Parâmetros simuláveis
   const [precoVendaProjetado, setPrecoVendaProjetado] = useState<string>('300');
@@ -80,6 +81,9 @@ export default function FluxoPage() {
         if (resDieta.ok) {
           const data = await resDieta.json();
           setDietas(data.dietas || []);
+          if (data.dietas && data.dietas.length > 0) {
+            setSelectedDietaId(String(data.dietas[0].id));
+          }
         }
       } catch (e) {
         console.error('Erro ao buscar dados do fluxo:', e);
@@ -132,17 +136,15 @@ export default function FluxoPage() {
     );
   }
 
-  // Obter o custo por kg da dieta do lote
+  // Obter o custo por kg da dieta do lote ou selecionada
   const getCustoDieta = () => {
-    if (!activeLote) return 1.41; // Fallback
-    const dieta = dietas.find(d => d.id === activeLote.dieta_id);
+    const dieta = dietas.find(d => String(d.id) === selectedDietaId);
     return dieta ? Number(dieta.custo_por_kg) : 1.41;
   };
 
   const getNomeDieta = () => {
-    if (!activeLote) return 'Dieta Não Definida';
-    const dieta = dietas.find(d => d.id === activeLote.dieta_id);
-    return dieta ? dieta.nome_dieta : 'Dieta Não Definida (Usando padrão R$ 1,41/kg)';
+    const dieta = dietas.find(d => String(d.id) === selectedDietaId);
+    return dieta ? dieta.nome_dieta : 'Dieta Padrão GMDTech';
   };
 
   // Fazer o cálculo da simulação
@@ -329,6 +331,21 @@ export default function FluxoPage() {
               {lotes.map(l => (
                 <option key={l.id} value={l.id}>
                   {l.nome_lote} ({l.status === 'ativo' ? '🟢 Ativo' : '🔴 Encerrado'})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Ração para Simulação:</label>
+            <select 
+              value={selectedDietaId} 
+              onChange={(e) => setSelectedDietaId(e.target.value)} 
+              style={styles.select}
+            >
+              {dietas.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.nome_dieta} (R$ {Number(d.custo_por_kg).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/kg)
                 </option>
               ))}
             </select>
