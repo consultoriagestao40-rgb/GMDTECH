@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'GMDTech - Confinamento Inteligente',
   description: 'Controle de custos por @ produzida e GMD para pequenos pecuaristas.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
