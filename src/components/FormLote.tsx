@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Layers, Users, Scale, DollarSign, Target, Save, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Layers, Users, Scale, DollarSign, Target, Save, CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
 
 export default function FormLote() {
   const router = useRouter();
