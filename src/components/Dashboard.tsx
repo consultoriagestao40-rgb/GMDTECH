@@ -23,12 +23,15 @@ interface LoteStats {
   custo_por_arroba_produzida: number;
   status: string;
   rendimento_carcaca_previsto: number;
+  gmd_estimado: number;
+  ciclo_dias: number;
 }
 
 interface PesagemHistorico {
   data: string;
   peso: number;
   gmd: number;
+  dias: number;
 }
 
 interface Animal {
@@ -74,6 +77,7 @@ export default function Dashboard() {
   const [editLoteDataEntrada, setEditLoteDataEntrada] = useState<string>('');
   const [editLoteCusto, setEditLoteCusto] = useState<string>('');
   const [editLoteRendimento, setEditLoteRendimento] = useState<string>('');
+  const [editLoteCiclo, setEditLoteCiclo] = useState<string>('90');
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -174,6 +178,7 @@ export default function Dashboard() {
     setEditLoteDataEntrada(new Date(activeLote.data_entrada).toISOString().split('T')[0]);
     setEditLoteCusto(String(activeLote.custo_aquisicao));
     setEditLoteRendimento(String(activeLote.rendimento_carcaca_previsto || '54.0'));
+    setEditLoteCiclo(String(activeLote.ciclo_dias || '90'));
     setShowEditLoteModal(true);
     setFormError(null);
     setFormSuccess(null);
@@ -200,7 +205,8 @@ export default function Dashboard() {
           nome_lote: editLoteNome,
           data_entrada: editLoteDataEntrada,
           custo_aquisicao_total: parseFloat(editLoteCusto) || 0,
-          rendimento_carcaca_previsto: parseFloat(editLoteRendimento) || 54.0
+          rendimento_carcaca_previsto: parseFloat(editLoteRendimento) || 54.0,
+          ciclo_dias: parseInt(editLoteCiclo) || 90
         })
       });
 
@@ -308,65 +314,158 @@ export default function Dashboard() {
     );
   }
 
-  // Gráfico SVG do Histórico de GMD
   const renderGmdChart = () => {
-    if (historicoPesagens.length < 2) {
+    const activeLote = lotes.find(l => l.id === selectedLoteId);
+    if (!activeLote) {
       return (
         <div style={styles.emptyChart}>
           <BarChart2 size={24} style={{ marginBottom: '8px' }} />
-          <span>Histórico de peso insuficiente.</span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mínimo de 2 datas de pesagem necessárias.</span>
+          <span>Selecione um lote para visualizar o gráfico.</span>
         </div>
       );
     }
 
     const width = 500;
     const height = 180;
-    const padding = 30;
+    const paddingLeft = 45;
+    const paddingRight = 20;
+    const paddingTop = 20;
+    const paddingBottom = 30;
 
-    const gmds = historicoPesagens.map(p => p.gmd);
-    const minGmd = Math.min(...gmds, 0.5);
-    const maxGmd = Math.max(...gmds, 2.0);
-    const rangeY = maxGmd - minGmd || 1.0;
+    const ciclo_dias = activeLote.ciclo_dias || 90;
+    const gmdEst = activeLote.gmd_estimado || 1.500;
+    const pesoIni = activeLote.peso_medio_entrada || 300;
 
-    const points = historicoPesagens.map((p, index) => {
-      const x = padding + (index / (historicoPesagens.length - 1)) * (width - padding * 2);
-      const y = height - padding - ((p.gmd - minGmd) / rangeY) * (height - padding * 2);
-      return { x, y, label: p.data, value: p.gmd };
+    // Linha Teórica de Projeção (Meta)
+    const pesoProjetadoFim = pesoIni + gmdEst * ciclo_dias;
+
+    // Coletar pesos reais
+    const pontosReaisRaw = [...historicoPesagens];
+    pontosReaisRaw.sort((a, b) => (a.dias || 0) - (b.dias || 0));
+
+    const realPoints: { dias: number; peso: number; label: string }[] = [];
+    
+    // Adicionar ponto inicial
+    realPoints.push({
+      dias: 0,
+      peso: pesoIni,
+      label: 'Dia 0'
     });
 
-    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const areaPath = `${linePath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+    // Adicionar outros pontos do histórico real
+    pontosReaisRaw.forEach(p => {
+      if (p.dias > 0) {
+        realPoints.push({
+          dias: p.dias,
+          peso: p.peso,
+          label: p.data
+        });
+      }
+    });
+
+    // Encontrar min e max pesos para escala do eixo Y
+    const todosPesos = [...realPoints.map(p => p.peso), pesoIni, pesoProjetadoFim];
+    const minPeso = Math.min(...todosPesos) - 15;
+    const maxPeso = Math.max(...todosPesos) + 15;
+    const rangeY = maxPeso - minPeso || 1.0;
+
+    // Funções de conversão para coordenadas SVG
+    const getX = (dias: number) => {
+      return paddingLeft + (dias / ciclo_dias) * (width - paddingLeft - paddingRight);
+    };
+
+    const getY = (peso: number) => {
+      return height - paddingBottom - ((peso - minPeso) / rangeY) * (height - paddingTop - paddingBottom);
+    };
+
+    // Gerar caminhos SVG
+    const targetPath = `M ${getX(0)} ${getY(pesoIni)} L ${getX(ciclo_dias)} ${getY(pesoProjetadoFim)}`;
+
+    const realPointsCoords = realPoints.map(p => ({
+      x: getX(p.dias),
+      y: getY(p.peso),
+      peso: p.peso,
+      label: p.label,
+      dias: p.dias
+    }));
+
+    const realLinePath = realPointsCoords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const realAreaPath = realPointsCoords.length > 0 
+      ? `${realLinePath} L ${realPointsCoords[realPointsCoords.length - 1].x} ${height - paddingBottom} L ${realPointsCoords[0].x} ${height - paddingBottom} Z`
+      : '';
+
+    const yGridValues = [
+      minPeso + 15,
+      minPeso + 15 + (maxPeso - minPeso - 30) / 2,
+      maxPeso - 15
+    ];
 
     return (
       <div style={styles.chartWrapper}>
+        <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'center', marginBottom: '0.75rem', fontSize: '0.78rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <div style={{ width: '12px', height: '3px', backgroundColor: 'var(--color-accent)', borderRadius: '1px' }}></div>
+            <span style={{ color: 'var(--text-secondary)' }}>Meta Projetada ({gmdEst.toFixed(1)} kg/dia GMD)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <div style={{ width: '12px', height: '3px', backgroundColor: 'var(--color-brand)', borderRadius: '1px' }}></div>
+            <span style={{ color: 'var(--text-secondary)' }}>Realizado (Média do Lote)</span>
+          </div>
+        </div>
+
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto' }}>
           <defs>
             <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-brand)" stopOpacity="0.4"/>
+              <stop offset="0%" stopColor="var(--color-brand)" stopOpacity="0.3"/>
               <stop offset="100%" stopColor="var(--color-brand)" stopOpacity="0.0"/>
             </linearGradient>
           </defs>
 
-          {[0.5, 1.0, 1.5, 2.0].map((val, idx) => {
-            if (val < minGmd || val > maxGmd) return null;
-            const y = height - padding - ((val - minGmd) / rangeY) * (height - padding * 2);
+          {/* Eixo Y */}
+          {yGridValues.map((val, idx) => {
+            const y = getY(val);
             return (
               <g key={idx}>
-                <line x1={padding} y1={y} x2={width - padding} y2={y} stroke="rgba(255,255,255,0.05)" strokeDasharray="3" />
-                <text x={padding - 5} y={y + 4} fill="var(--text-muted)" fontSize="8" textAnchor="end">{val.toFixed(1)} kg</text>
+                <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="rgba(255,255,255,0.06)" strokeDasharray="3" />
+                <text x={paddingLeft - 8} y={y + 3} fill="var(--text-muted)" fontSize="8" textAnchor="end">{Math.round(val)} kg</text>
               </g>
             );
           })}
 
-          <path d={areaPath} fill="url(#chartGradient)" />
-          <path d={linePath} fill="none" stroke="var(--color-brand)" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Eixo X */}
+          {[0, Math.round(ciclo_dias / 2), ciclo_dias].map((dia, idx) => {
+            const x = getX(dia);
+            return (
+              <g key={idx}>
+                <line x1={x} y1={paddingTop} x2={x} y2={height - paddingBottom} stroke="rgba(255,255,255,0.03)" />
+                <text x={x} y={height - paddingBottom + 12} fill="var(--text-muted)" fontSize="8" textAnchor="middle">
+                  {dia === 0 ? 'Entrada' : `Dia ${dia}`}
+                </text>
+              </g>
+            );
+          })}
 
-          {points.map((p, idx) => (
+          {realPointsCoords.length > 1 && (
+            <path d={realAreaPath} fill="url(#chartGradient)" />
+          )}
+
+          <path d={targetPath} fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeDasharray="4 3" opacity="0.8" />
+
+          {realPointsCoords.length > 1 ? (
+            <path d={realLinePath} fill="none" stroke="var(--color-brand)" strokeWidth="2.5" strokeLinecap="round" />
+          ) : null}
+
+          {realPointsCoords.map((p, idx) => (
             <g key={idx}>
-              <circle cx={p.x} cy={p.y} r="4" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
-              <text x={p.x} y={p.y - 8} fill="#fff" fontSize="8" fontWeight="600" textAnchor="middle">{p.value.toFixed(2)} kg</text>
-              <text x={p.x} y={height - padding + 12} fill="var(--text-muted)" fontSize="8" textAnchor="middle">{p.label}</text>
+              <circle cx={p.x} cy={p.y} r="3.5" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
+              <text x={p.x} y={p.y - 7} fill="#fff" fontSize="8" fontWeight="600" textAnchor="middle">
+                {p.peso.toFixed(0)} kg
+              </text>
+              {p.dias > 0 && (
+                <text x={p.x} y={height - paddingBottom + 20} fill="var(--text-muted)" fontSize="7" textAnchor="middle">
+                  ({p.label})
+                </text>
+              )}
             </g>
           ))}
         </svg>
@@ -849,6 +948,16 @@ export default function Dashboard() {
                   step="0.1"
                   value={editLoteRendimento}
                   onChange={(e) => setEditLoteRendimento(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Ciclo Planejado (Dias):</label>
+                <input 
+                  type="number" 
+                  value={editLoteCiclo}
+                  onChange={(e) => setEditLoteCiclo(e.target.value)}
                   style={styles.input}
                   required
                 />

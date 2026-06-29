@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     const ta = parseFloat(body.taxa_adaptacao || '1.0');
     const te = parseFloat(body.taxa_engorda || '2.2');
     const gmd = parseFloat(body.gmd_estimado || '1.500');
+    const ciclo = parseInt(body.ciclo_dias || '90');
 
     if (cabecas <= 0 || pesoTotal <= 0 || custoAquisicao < 0) {
       return NextResponse.json({ error: 'Valores numéricos inválidos.' }, { status: 400 });
@@ -44,7 +45,8 @@ export async function POST(request: Request) {
         dias_adaptacao,
         taxa_adaptacao,
         taxa_engorda,
-        gmd_estimado
+        gmd_estimado,
+        ciclo_dias
       )
       VALUES (
         ${nome_lote}, 
@@ -57,7 +59,8 @@ export async function POST(request: Request) {
         ${da},
         ${ta},
         ${te},
-        ${gmd}
+        ${gmd},
+        ${ciclo}
       )
       RETURNING id
     `;
@@ -131,7 +134,7 @@ export async function DELETE(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado } = body;
+    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias } = body;
 
     if (!id || !nome_lote) {
       return NextResponse.json({ error: 'ID e Nome do lote são obrigatórios.' }, { status: 400 });
@@ -145,6 +148,7 @@ export async function PUT(request: Request) {
     const ta = parseFloat(taxa_adaptacao || '1.0');
     const te = parseFloat(taxa_engorda || '2.2');
     const gmd = parseFloat(gmd_estimado || '1.500');
+    const ciclo = parseInt(ciclo_dias || '90');
 
     await sql`
       UPDATE lotes 
@@ -155,7 +159,8 @@ export async function PUT(request: Request) {
           dias_adaptacao = ${da},
           taxa_adaptacao = ${ta},
           taxa_engorda = ${te},
-          gmd_estimado = ${gmd}
+          gmd_estimado = ${gmd},
+          ciclo_dias = ${ciclo}
       WHERE id = ${loteId}
     `;
 

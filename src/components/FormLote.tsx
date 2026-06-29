@@ -13,6 +13,7 @@ export default function FormLote() {
   const [pesoTotalEntrada, setNovoLotePeso] = useState<string>('');
   const [custoAquisicaoTotal, setNovoLoteCusto] = useState<string>('');
   const [rendimentoCarcacaPrevisto, setNovoLoteRendimento] = useState<string>('54.0');
+  const [cicloDias, setCicloDias] = useState<string>('90');
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -36,7 +37,8 @@ export default function FormLote() {
           qtd_cabecas: parseInt(qtdCabecas),
           peso_total_entrada: parseFloat(pesoTotalEntrada),
           custo_aquisicao_total: parseFloat(custoAquisicaoTotal),
-          rendimento_carcaca_previsto: parseFloat(rendimentoCarcacaPrevisto)
+          rendimento_carcaca_previsto: parseFloat(rendimentoCarcacaPrevisto),
+          ciclo_dias: parseInt(cicloDias) || 90
         })
       });
 
@@ -55,6 +57,7 @@ export default function FormLote() {
       setNovoLotePeso('');
       setNovoLoteCusto('');
       setNovoLoteRendimento('54.0');
+      setCicloDias('90');
 
       // Redirecionar para o painel após 1.5 segundos
       setTimeout(() => {
@@ -159,6 +162,23 @@ export default function FormLote() {
             style={styles.input}
           />
           <span style={styles.tip}>Média padrão no confinamento: 54%</span>
+        </div>
+
+        {/* Ciclo Planejado */}
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>
+            <Calendar size={14} style={{ marginRight: '6px' }} />
+            Ciclo Planejado em Dias (entrada à venda)
+          </label>
+          <input 
+            type="number"
+            placeholder="Ex: 90"
+            value={cicloDias}
+            onChange={(e) => setCicloDias(e.target.value)}
+            style={styles.input}
+            required
+          />
+          <span style={styles.tip}>Média padrão no confinamento: 90 dias</span>
         </div>
 
         {/* Botão de Envio */}
