@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -62,7 +64,7 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: {
     fontSize: '0.9rem',
     color: 'var(--text-secondary)',
-    marginTop: '0.2rem'
+    marginTop: '0.2'
   },
   formWrapper: {
     marginTop: '0.75rem'
