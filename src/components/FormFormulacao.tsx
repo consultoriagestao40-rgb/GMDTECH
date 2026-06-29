@@ -2,13 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calculator, Plus, Trash2, Save, CheckCircle, AlertTriangle, Scale, DollarSign, Package } from 'lucide-react';
+import { Calculator, Plus, Trash2, Save, CheckCircle, AlertTriangle, Scale, DollarSign, RefreshCw } from 'lucide-react';
 
 interface Ingrediente {
   id: string;
   nome: string;
   custoPorKg: number;
   porcentagem: number;
+}
+
+interface Dieta {
+  id: number;
+  nome_dieta: string;
+  custo_por_kg: number;
+  estoque_kg: number;
+  formula_receita: any;
 }
 
 export default function FormFormulacao() {
@@ -28,8 +36,33 @@ export default function FormFormulacao() {
   const [nomeRacao, setNomeRacao] = useState<string>('Ração Customizada 1.5kg');
   const [estoqueInicial, setEstoqueInicial] = useState<string>('5000');
   
+  // Lista de dietas salvas no banco
+  const [savedDietas, setSavedDietas] = useState<Dieta[]>([]);
+  const [selectedDietId, setSelectedDietId] = useState<string>('');
+  const [loadingDietas, setLoadingDietas] = useState<boolean>(false);
+
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Carregar dietas salvas no Neon DB
+  const loadSavedDietas = async () => {
+    setLoadingDietas(true);
+    try {
+      const res = await fetch('/api/tratos');
+      if (res.ok) {
+        const data = await res.json();
+        setSavedDietas(data.dietas || []);
+      }
+    } catch (e) {
+      console.error('Erro ao buscar dietas:', e);
+    } finally {
+      setLoadingDietas(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSavedDietas();
+  }, []);
 
   // Cálculos dinâmicos
   const totalPorcentagem = ingredientes.reduce((acc, cur) => acc + cur.porcentagem, 0);
@@ -42,6 +75,43 @@ export default function FormFormulacao() {
 
   // Custo por saco de 40 kg (padrão de comércio no Brasil)
   const custoPorSaco40kg = custoPorKg * 40;
+
+  // Selecionar uma ração cadastrada
+  const handleSelectDiet = (id: string) => {
+    setSelectedDietId(id);
+    if (!id) {
+      setIngredientes(defaultIngredients);
+      setNomeRacao('Nova Ração Formulada');
+      setEstoqueInicial('5000');
+      return;
+    }
+    const diet = savedDietas.find(d => String(d.id) === id);
+    if (diet) {
+      setNomeRacao(diet.nome_dieta);
+      setEstoqueInicial(String(diet.estoque_kg));
+      if (diet.formula_receita) {
+        try {
+          const parsed = typeof diet.formula_receita === 'string' 
+            ? JSON.parse(diet.formula_receita) 
+            : diet.formula_receita;
+          if (Array.isArray(parsed)) {
+            setIngredientes(parsed);
+            return;
+          }
+        } catch (e) {
+          console.error('Erro ao fazer parse da receita:', e);
+        }
+      }
+      // Caso não tenha receita salva (padrões sementes)
+      setIngredientes([
+        { id: '1', nome: 'Dieta Base', custoPorKg: Number(diet.custo_por_kg), porcentagem: 100 }
+      ]);
+    }
+  };
+
+  const handleResetToNew = () => {
+    handleSelectDiet('');
+  };
 
   // Adicionar nova linha de ingrediente
   const handleAddIngredient = () => {
@@ -73,10 +143,18 @@ export default function FormFormulacao() {
     );
   };
 
-  // Salvar a formulação como uma nova Dieta no Neon DB
-  const handleSaveFormula = async (e: React.FormEvent) => {
+  // Salvar como NOVA Ração (POST)
+  const handleSaveNewFormula = async (e: React.FormEvent) => {
     e.preventDefault();
+    await submitFormula('POST');
+  };
 
+  // Atualizar Ração Existente (PUT)
+  const handleUpdateFormula = async () => {
+    await submitFormula('PUT');
+  };
+
+  const submitFormula = async (method: 'POST' | 'PUT') => {
     if (totalPorcentagem !== 100) {
       setStatusMessage({
         type: 'error',
@@ -86,7 +164,7 @@ export default function FormFormulacao() {
     }
 
     if (!nomeRacao.trim()) {
-      setStatusMessage({ type: 'error', text: 'Informe um nome para a ração formulada.' });
+      setStatusMessage({ type: 'error', text: 'Informe um nome para a ração.' });
       return;
     }
 
@@ -94,34 +172,41 @@ export default function FormFormulacao() {
     setStatusMessage(null);
 
     try {
+      const payload: any = {
+        nome_dieta: nomeRacao,
+        custo_por_kg: Number(custoPorKg.toFixed(4)),
+        estoque_kg: parseFloat(estoqueInicial) || 0,
+        formula_receita: ingredientes
+      };
+
+      if (method === 'PUT') {
+        payload.id = selectedDietId;
+      }
+
       const response = await fetch('/api/dietas', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome_dieta: nomeRacao,
-          custo_por_kg: Number(custoPorKg.toFixed(4)),
-          estoque_kg: parseFloat(estoqueInicial) || 0
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        throw new Error('Falha ao salvar a ração formulada na nuvem.');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao salvar a ração no servidor.');
       }
 
       setStatusMessage({
         type: 'success',
-        text: `Ração "${nomeRacao}" (R$ ${custoPorKg.toFixed(2)}/kg) formulada e integrada com sucesso ao curral!`
+        text: method === 'POST'
+          ? `Ração "${nomeRacao}" formulada e integrada com sucesso ao curral!`
+          : `Ração "${nomeRacao}" atualizada com sucesso!`
       });
 
-      // Limpar form
-      setNomeRacao('Nova Ração Formulada');
-      setEstoqueInicial('5000');
-
-      // Recarregar e mandar para trato após 2s
+      // Recarregar lista e ir para trato
+      loadSavedDietas();
       setTimeout(() => {
         router.push('/trato');
         router.refresh();
-      }, 2000);
+      }, 1500);
 
     } catch (err: any) {
       setStatusMessage({
@@ -142,6 +227,31 @@ export default function FormFormulacao() {
         <div style={styles.cardHeader}>
           <Calculator size={22} color="var(--color-accent)" style={{ marginRight: '8px' }} />
           <h2 style={styles.cardTitle}>Mistura de Ingredientes (% e Custos)</h2>
+        </div>
+
+        {/* DROPDOWN DE RAÇÕES EXISTENTES */}
+        <div style={styles.dropdownSection}>
+          <label style={styles.label}>Carregar Ração Cadastrada para Editar:</label>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+            <select 
+              value={selectedDietId} 
+              onChange={(e) => handleSelectDiet(e.target.value)}
+              style={styles.select}
+              disabled={loadingDietas}
+            >
+              <option value="">-- Nova Fórmula em Branco --</option>
+              {savedDietas.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nome_dieta} (R$ {Number(d.custo_por_kg).toFixed(2)}/kg)
+                </option>
+              ))}
+            </select>
+            {selectedDietId && (
+              <button onClick={handleResetToNew} style={styles.clearBtn}>
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
 
         <p style={styles.description}>
@@ -261,10 +371,10 @@ export default function FormFormulacao() {
         <div style={styles.saveSection}>
           <h3 style={styles.saveTitle}>Disponibilizar no Confinamento</h3>
           <p style={styles.saveDescription}>
-            Salve esta formulação para usá-la imediatamente no lançamento de tratos dos seus lotes.
+            Salve a formulação para usá-la nos tratos diários dos lotes.
           </p>
 
-          <form onSubmit={handleSaveFormula} style={styles.saveForm}>
+          <form onSubmit={handleSaveNewFormula} style={styles.saveForm}>
             <div style={styles.inputGroup}>
               <label style={styles.label}>Nome da Ração / Dieta:</label>
               <input 
@@ -277,7 +387,7 @@ export default function FormFormulacao() {
               />
             </div>
             <div style={styles.inputGroup}>
-              <label style={styles.label}>Estoque Inicial Fabricado (kg):</label>
+              <label style={styles.label}>Estoque de Fabricação (kg):</label>
               <div style={styles.inputIconWrapper}>
                 <input 
                   type="number"
@@ -291,18 +401,56 @@ export default function FormFormulacao() {
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              disabled={submitting || !isFormValid}
-              style={{
-                ...styles.saveBtn,
-                opacity: (submitting || !isFormValid) ? 0.6 : 1,
-                cursor: (submitting || !isFormValid) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <Save size={18} style={{ marginRight: '8px' }} />
-              {submitting ? 'Salvando Ração...' : 'Salvar e Disponibilizar'}
-            </button>
+            {/* Ações de Salvar (Diferencia Novo vs Edição) */}
+            {selectedDietId ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
+                <button 
+                  type="button" 
+                  onClick={handleUpdateFormula}
+                  disabled={submitting || !isFormValid}
+                  style={{
+                    ...styles.saveBtn,
+                    backgroundColor: 'var(--color-accent)',
+                    boxShadow: 'none',
+                    opacity: (submitting || !isFormValid) ? 0.6 : 1,
+                    cursor: (submitting || !isFormValid) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <Save size={18} style={{ marginRight: '8px' }} />
+                  Salvar Alterações (Atualizar)
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting || !isFormValid}
+                  style={{
+                    ...styles.saveBtn,
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--color-brand)',
+                    color: 'var(--color-brand)',
+                    boxShadow: 'none',
+                    opacity: (submitting || !isFormValid) ? 0.6 : 1,
+                    cursor: (submitting || !isFormValid) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <Plus size={18} style={{ marginRight: '8px' }} />
+                  Salvar como Nova Ração
+                </button>
+              </div>
+            ) : (
+              <button 
+                type="submit" 
+                disabled={submitting || !isFormValid}
+                style={{
+                  ...styles.saveBtn,
+                  opacity: (submitting || !isFormValid) ? 0.6 : 1,
+                  cursor: (submitting || !isFormValid) ? 'not-allowed' : 'pointer',
+                  marginTop: '0.5rem'
+                }}
+              >
+                <Save size={18} style={{ marginRight: '8px' }} />
+                {submitting ? 'Salvando Ração...' : 'Salvar e Disponibilizar'}
+              </button>
+            )}
           </form>
         </div>
 
@@ -342,6 +490,37 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: '1rem'
   },
+  dropdownSection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    border: '1px solid var(--border-color)',
+    borderRadius: 'var(--radius-sm)',
+    padding: '0.75rem 1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem'
+  },
+  select: {
+    flex: 1,
+    padding: '0.65rem 0.75rem',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--border-color)',
+    backgroundColor: 'var(--bg-secondary)',
+    color: '#fff',
+    fontSize: '0.9rem',
+    outline: 'none',
+    cursor: 'pointer'
+  },
+  clearBtn: {
+    padding: '0.65rem 1rem',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--border-color)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    transition: 'all var(--transition-fast)'
+  },
   cardSummary: {
     flex: '1 1 350px',
     padding: '1.5rem',
@@ -365,7 +544,8 @@ const styles: Record<string, React.CSSProperties> = {
   description: {
     fontSize: '0.85rem',
     color: 'var(--text-secondary)',
-    lineHeight: 1.4
+    lineHeight: 1.4,
+    marginTop: '0.25rem'
   },
   ingredientList: {
     display: 'flex',
@@ -531,7 +711,8 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 12px var(--color-brand-glow)',
-    marginTop: '0.25rem'
+    marginTop: '0.25rem',
+    transition: 'all var(--transition-fast)'
   },
   statusMessage: {
     padding: '0.75rem',

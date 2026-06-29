@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const dietas = await sql`
-      SELECT id, nome_dieta, custo_por_kg, estoque_kg 
+      SELECT id, nome_dieta, custo_por_kg, estoque_kg, formula_receita 
       FROM dietas 
       ORDER BY nome_dieta ASC
     `;

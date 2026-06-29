@@ -26,7 +26,8 @@ CREATE TABLE dietas (
     id SERIAL PRIMARY KEY,
     nome_dieta VARCHAR(100) NOT NULL,
     custo_por_kg NUMERIC(10, 4) NOT NULL CHECK (custo_por_kg >= 0),
-    estoque_kg NUMERIC(12, 2) NOT NULL DEFAULT 5000.00 CHECK (estoque_kg >= 0)
+    estoque_kg NUMERIC(12, 2) NOT NULL DEFAULT 5000.00 CHECK (estoque_kg >= 0),
+    formula_receita JSONB
 );
 
 -- Tabela de Animais (Rastreamento Individual por Brinco)
