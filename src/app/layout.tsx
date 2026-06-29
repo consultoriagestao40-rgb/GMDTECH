@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '../styles/globals.css';
 import PWARegister from '../components/PWARegister';
 import Sidebar from '../components/Sidebar';
+import AuthWrapper from '../components/AuthWrapper';
 
 export const metadata: Metadata = {
   title: 'GMDTech - Confinamento Inteligente',
@@ -37,15 +38,17 @@ export default function RootLayout({
       <body>
         <PWARegister />
         
-        {/* Renderiza o Menu Lateral (Sidebar responsivo) */}
-        <Sidebar />
+        <AuthWrapper>
+          {/* Renderiza o Menu Lateral (Sidebar responsivo) */}
+          <Sidebar />
 
-        {/* Container de Layout Principal ajustável via CSS responsivo */}
-        <div className="layout-content">
-          <main className="main-content">
-            {children}
-          </main>
-        </div>
+          {/* Container de Layout Principal ajustável via CSS responsivo */}
+          <div className="layout-content">
+            <main className="main-content">
+              {children}
+            </main>
+          </div>
+        </AuthWrapper>
       </body>
     </html>
   );

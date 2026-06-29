@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp } from 'lucide-react';
+import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -86,6 +86,30 @@ export default function Sidebar() {
               </Link>
             );
           })}
+
+          {/* Botão de Logout */}
+          <button
+            onClick={() => {
+              localStorage.removeItem('gmdtech_user');
+              window.location.reload();
+            }}
+            style={{
+              ...styles.navLink,
+              width: '100%',
+              background: 'transparent',
+              border: 'none',
+              borderLeft: '3px solid transparent',
+              textAlign: 'left',
+              cursor: 'pointer',
+              marginTop: '1rem',
+              color: 'var(--color-danger)'
+            }}
+          >
+            <span style={{ marginRight: '10px', display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+              <LogOut size={18} />
+            </span>
+            Sair da Conta
+          </button>
         </nav>
 
         {/* Footer do Menu */}
