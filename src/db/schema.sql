@@ -22,7 +22,8 @@ CREATE TABLE lotes (
     dias_adaptacao INTEGER NOT NULL DEFAULT 15,
     taxa_adaptacao NUMERIC(5, 2) NOT NULL DEFAULT 1.00,
     taxa_engorda NUMERIC(5, 2) NOT NULL DEFAULT 2.20,
-    gmd_estimado NUMERIC(5, 3) NOT NULL DEFAULT 1.500
+    gmd_estimado NUMERIC(5, 3) NOT NULL DEFAULT 1.500,
+    ciclo_dias INTEGER NOT NULL DEFAULT 90
 );
 
 -- Tabela de Dietas
@@ -111,3 +112,17 @@ CREATE TABLE premissas_trato (
 -- Seeding inicial para premissas
 INSERT INTO premissas_trato (dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado)
 VALUES (15, 1.00, 2.20, 1.500);
+
+-- Tabela de Usuários e Autenticação
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'admin'
+);
+
+-- Seed de Usuário Administrador Inicial (Com variações para evitar bloqueio por digitação)
+INSERT INTO usuarios (email, senha, role) VALUES 
+('cristiano.godoi@hotmail.com', '123456', 'admin'),
+('critiano.godoi@homtmail.com', '123456', 'admin')
+ON CONFLICT (email) DO NOTHING;
