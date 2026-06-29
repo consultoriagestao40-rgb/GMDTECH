@@ -66,6 +66,13 @@ export default function Dashboard() {
   const [modalVendaPrecoArroba, setModalVendaPrecoArroba] = useState<string>('300.00');
   const [modalVendaRendimento, setModalVendaRendimento] = useState<string>('54.0');
 
+  // Estados para Edição do Lote
+  const [showEditLoteModal, setShowEditLoteModal] = useState<boolean>(false);
+  const [editLoteNome, setEditLoteNome] = useState<string>('');
+  const [editLoteDataEntrada, setEditLoteDataEntrada] = useState<string>('');
+  const [editLoteCusto, setEditLoteCusto] = useState<string>('');
+  const [editLoteRendimento, setEditLoteRendimento] = useState<string>('');
+
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [submittingAction, setSubmittingAction] = useState<boolean>(false);
@@ -155,6 +162,62 @@ export default function Dashboard() {
     } catch (e) {
       console.error(e);
       alert("Erro ao conectar com o banco de dados.");
+    }
+  };
+
+  // Abrir Modal de Edição do Lote
+  const openEditLoteModal = () => {
+    if (!activeLote) return;
+    setEditLoteNome(activeLote.nome_lote);
+    setEditLoteDataEntrada(new Date(activeLote.data_entrada).toISOString().split('T')[0]);
+    setEditLoteCusto(String(activeLote.custo_aquisicao));
+    setEditLoteRendimento(String(activeLote.rendimento_carcaca_previsto || '54.0'));
+    setShowEditLoteModal(true);
+    setFormError(null);
+    setFormSuccess(null);
+  };
+
+  // Submeter Edição do Lote
+  const handleEditLote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLoteId || !editLoteNome || !editLoteDataEntrada) {
+      setFormError('Nome do lote e Data de Entrada são obrigatórios.');
+      return;
+    }
+
+    setSubmittingAction(true);
+    setFormError(null);
+    setFormSuccess(null);
+
+    try {
+      const res = await fetch('/api/lotes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedLoteId,
+          nome_lote: editLoteNome,
+          data_entrada: editLoteDataEntrada,
+          custo_aquisicao_total: parseFloat(editLoteCusto) || 0,
+          rendimento_carcaca_previsto: parseFloat(editLoteRendimento) || 54.0
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Erro ao salvar alterações.');
+      }
+
+      setFormSuccess('Dados do lote atualizados com sucesso!');
+
+      setTimeout(() => {
+        setShowEditLoteModal(false);
+        loadDashboardData();
+      }, 1200);
+
+    } catch (err: any) {
+      setFormError(err.message || 'Erro ao atualizar informações do lote.');
+    } finally {
+      setSubmittingAction(false);
     }
   };
 
@@ -439,6 +502,10 @@ export default function Dashboard() {
                     Simular Fechamento Financeiro
                   </button>
 
+                  <button onClick={openEditLoteModal} style={styles.editLoteBtn}>
+                    Editar Informações do Lote
+                  </button>
+
                   <button onClick={handleDeleteLote} style={styles.deleteBtn}>
                     Excluir Lote Permanentemente
                   </button>
@@ -486,6 +553,9 @@ export default function Dashboard() {
                       style={styles.resetBtn}
                     >
                       Simular Outro Preço
+                    </button>
+                    <button onClick={openEditLoteModal} style={styles.editLoteBtn}>
+                      Editar Informações do Lote
                     </button>
                     <button onClick={handleDeleteLote} style={styles.deleteBtn}>
                       Excluir Lote Permanentemente
@@ -700,6 +770,68 @@ export default function Dashboard() {
               </div>
             </form>
 
+            {formError && <div style={styles.formErrorMsg}>{formError}</div>}
+            {formSuccess && <div style={styles.formSuccessMsg}>{formSuccess}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA EDIÇÃO DO LOTE */}
+      {showEditLoteModal && activeLote && (
+        <div style={styles.modalOverlay}>
+          <div className="glass-panel" style={styles.modalContent}>
+            <h3 style={styles.modalTitle}>Editar Informações do Lote</h3>
+            <form onSubmit={handleEditLote} style={styles.modalForm}>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Nome do Lote:</label>
+                <input 
+                  type="text" 
+                  value={editLoteNome}
+                  onChange={(e) => setEditLoteNome(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Data de Entrada:</label>
+                <input 
+                  type="date" 
+                  value={editLoteDataEntrada}
+                  onChange={(e) => setEditLoteDataEntrada(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Custo de Aquisição (R$):</label>
+                <input 
+                  type="number" 
+                  value={editLoteCusto}
+                  onChange={(e) => setEditLoteCusto(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Rendimento Carcaça Previsto (%):</label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  value={editLoteRendimento}
+                  onChange={(e) => setEditLoteRendimento(e.target.value)}
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.modalActions}>
+                <button type="submit" disabled={submittingAction} style={styles.modalSubmitBtn}>
+                  {submittingAction ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+                <button type="button" onClick={() => setShowEditLoteModal(false)} style={styles.modalCancelBtn}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
             {formError && <div style={styles.formErrorMsg}>{formError}</div>}
             {formSuccess && <div style={styles.formSuccessMsg}>{formSuccess}</div>}
           </div>
@@ -980,6 +1112,20 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid var(--color-danger)',
     fontSize: '0.85rem',
     transition: 'all var(--transition-fast)'
+  },
+  editLoteBtn: {
+    backgroundColor: 'transparent',
+    color: 'var(--color-accent)',
+    padding: '0.75rem',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 600,
+    cursor: 'pointer',
+    textAlign: 'center',
+    border: '1px solid var(--color-accent)',
+    fontSize: '0.85rem',
+    transition: 'all var(--transition-fast)',
+    marginTop: '0.5rem',
+    marginBottom: '0.5rem'
   },
   closedActions: {
     display: 'flex',

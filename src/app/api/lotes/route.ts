@@ -113,3 +113,38 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Erro ao excluir lote no Neon DB', details: error.message }, { status: 500 });
   }
 }
+
+// PUT: Editar metadados do lote (nome, data de entrada, custo aquisição, rendimento previsto)
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto } = body;
+
+    if (!id || !nome_lote) {
+      return NextResponse.json({ error: 'ID e Nome do lote são obrigatórios.' }, { status: 400 });
+    }
+
+    const loteId = parseInt(id);
+    const custo = parseFloat(custo_aquisicao_total || '0');
+    const rend = parseFloat(rendimento_carcaca_previsto || '54');
+
+    await sql`
+      UPDATE lotes 
+      SET nome_lote = ${nome_lote},
+          data_entrada = ${new Date(data_entrada)},
+          custo_aquisicao_total = ${custo},
+          rendimento_carcaca_previsto = ${rend}
+      WHERE id = ${loteId}
+    `;
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Dados do lote atualizados com sucesso!' 
+    }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Erro ao editar lote:', error);
+    return NextResponse.json({ error: 'Erro ao salvar alterações do lote no Neon DB', details: error.message }, { status: 500 });
+  }
+}
+
