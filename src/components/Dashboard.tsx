@@ -391,7 +391,7 @@ export default function Dashboard() {
 
     const width = 500;
     const height = 180;
-    const paddingLeft = 45;
+    const paddingLeft = 60;
     const paddingRight = 20;
     const paddingTop = 20;
     const paddingBottom = 30;
@@ -536,7 +536,7 @@ export default function Dashboard() {
             return (
               <g key={idx}>
                 <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke="rgba(255,255,255,0.06)" strokeDasharray="3" />
-                <text x={paddingLeft - 8} y={y + 3} fill="var(--text-muted)" fontSize="8" textAnchor="end">{Math.round(val)} kg</text>
+                <text x={paddingLeft - 8} y={y + 3} fill="var(--text-muted)" fontSize="8" textAnchor="end">{Math.round(val).toLocaleString('pt-BR')} kg</text>
               </g>
             );
           })}
@@ -567,8 +567,15 @@ export default function Dashboard() {
           {realPointsCoords.map((p, idx) => (
             <g key={idx}>
               <circle cx={p.x} cy={p.y} r="3.5" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
-              <text x={p.x} y={p.y - 7} fill="#fff" fontSize="8" fontWeight="600" textAnchor="middle">
-                {p.peso.toFixed(0)} kg
+              <text 
+                x={p.dias === 0 ? p.x + 8 : p.x} 
+                y={p.dias === 0 ? p.y + 3 : p.y - 7} 
+                fill="#fff" 
+                fontSize="8" 
+                fontWeight="600" 
+                textAnchor={p.dias === 0 ? "start" : "middle"}
+              >
+                {Math.round(p.peso).toLocaleString('pt-BR')} kg
               </text>
               {p.dias > 0 && (
                 <text x={p.x} y={height - paddingBottom + 20} fill="var(--text-muted)" fontSize="7" textAnchor="middle">
