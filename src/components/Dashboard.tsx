@@ -132,17 +132,45 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lote_id: selectedLoteId,
-          preco_venda_arroba: parseFloat(precoVendaInput.replace(',', '.'))
+          preco_venda_arroba: parseFloat(precoVendaInput.replace(',', '.')),
+          confirm: false // APENAS SIMULAÇÃO
         })
       });
 
       if (res.ok) {
         const data = await res.json();
         setFechamentoInfo(data);
-        loadDashboardData();
       }
     } catch (e) {
       console.error('Erro no fechamento do lote:', e);
+    }
+  };
+
+  const handleConfirmarFechamento = async () => {
+    if (!selectedLoteId) return;
+    const confirmClose = window.confirm("ATENÇÃO: Deseja realmente confirmar a venda e encerrar este lote? Todos os animais serão considerados vendidos e o lote será marcado como encerrado definitivamente.");
+    if (!confirmClose) return;
+
+    try {
+      const res = await fetch('/api/fechamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lote_id: selectedLoteId,
+          preco_venda_arroba: parseFloat(precoVendaInput.replace(',', '.')),
+          confirm: true // CONFIRMA E ENCERRA NO DB!
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setFechamentoInfo(data);
+        alert("Venda confirmada e lote encerrado com sucesso!");
+        loadDashboardData();
+      }
+    } catch (e) {
+      console.error('Erro ao encerrar lote:', e);
+      alert("Falha ao encerrar lote.");
     }
   };
 
@@ -641,7 +669,14 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div style={styles.fechamentoInfoBox}>
-                  <div style={styles.successBadge}>Consolidação Financeira do Lote</div>
+                  <div style={{
+                    ...styles.successBadge,
+                    backgroundColor: activeLote.status === 'encerrado' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                    borderColor: activeLote.status === 'encerrado' ? 'var(--color-danger)' : 'var(--color-brand)',
+                    color: activeLote.status === 'encerrado' ? 'var(--color-danger)' : 'var(--color-brand)'
+                  }}>
+                    {activeLote.status === 'encerrado' ? 'Consolidação de Venda (Lote Encerrado)' : 'Simulação de Fechamento'}
+                  </div>
                   
                   <div style={styles.fechamentoStats}>
                     <div style={styles.statsRow}>
@@ -674,21 +709,32 @@ export default function Dashboard() {
                   </div>
                   
                   <div style={styles.closedActions}>
+                    {activeLote.status === 'ativo' && (
+                      <button 
+                        onClick={handleConfirmarFechamento}
+                        style={{ ...styles.closeBtn, marginTop: 0 }}
+                      >
+                        Confirmar Venda (Encerrar Lote)
+                      </button>
+                    )}
                     <button 
                       onClick={() => {
                         setFechamentoInfo(null);
-                        loadDashboardData();
                       }} 
                       style={styles.resetBtn}
                     >
-                      Simular Outro Preço
+                      {activeLote.status === 'encerrado' ? 'Voltar' : 'Simular Outro Preço'}
                     </button>
-                    <button onClick={openEditLoteModal} style={styles.editLoteBtn}>
-                      Editar Informações do Lote
-                    </button>
-                    <button onClick={handleDeleteLote} style={styles.deleteBtn}>
-                      Excluir Lote Permanentemente
-                    </button>
+                    {activeLote.status === 'ativo' && (
+                      <>
+                        <button onClick={openEditLoteModal} style={styles.editLoteBtn}>
+                          Editar Informações do Lote
+                        </button>
+                        <button onClick={handleDeleteLote} style={styles.deleteBtn}>
+                          Excluir Lote Permanentemente
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

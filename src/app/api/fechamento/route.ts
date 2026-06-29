@@ -4,7 +4,7 @@ import { sql } from '../../../db/neon';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { lote_id, preco_venda_arroba } = body;
+    const { lote_id, preco_venda_arroba, confirm } = body;
 
     if (!lote_id || !preco_venda_arroba) {
       return NextResponse.json({ error: 'Parâmetros insuficientes' }, { status: 400 });
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     // 1. Obter informações completas do lote
     const loteResult = await sql`
-      SELECT id, qtd_cabecas, custo_aquisicao_total, rendimento_carcaca_previsto, status
+      SELECT id, nome_lote, qtd_cabecas, custo_aquisicao_total, rendimento_carcaca_previsto, status
       FROM lotes 
       WHERE id = ${lote_id}
     `;
@@ -49,11 +49,8 @@ export async function POST(request: Request) {
     const rendimento = parseFloat(lote.rendimento_carcaca_previsto) / 100;
 
     // Fórmulas Financeiras da Pecuária de Corte:
-    // Peso de carcaça total (kg) = peso médio * rendimento de carcaça * qtd cabeças
     const pesoCarcacaTotalKg = pesoMedioVenda * rendimento * qtdCabecas;
-    // Total de Arrobas (@) vendidas = Peso de carcaça total / 15 (1 @ = 15kg de carne de carcaça)
     const totalArrobasVenda = pesoCarcacaTotalKg / 15;
-    // Faturamento Bruto de Venda = Total de Arrobas * Preço de venda por arroba
     const faturamentoTotal = totalArrobasVenda * precoVenda;
 
     // 3. Buscar custo total acumulado com alimentação (tratos)
@@ -66,21 +63,22 @@ export async function POST(request: Request) {
     const custoAquisicao = parseFloat(lote.custo_aquisicao_total);
     const custoTotal = custoAquisicao + custoTratosTotal;
 
-    // Lucro Líquido = Faturamento - (Custo Aquisição + Custos de Alimentação)
     const lucroLiquido = faturamentoTotal - custoTotal;
 
-    // 4. Encerrar o lote no Neon DB
-    await sql`
-      UPDATE lotes 
-      SET 
-        status = 'encerrado', 
-        data_saida = CURRENT_DATE, 
-        preco_venda_arroba = ${precoVenda}
-      WHERE id = ${lote_id}
-    `;
+    // 4. Encerrar o lote no Neon DB apenas se confirmado
+    if (confirm) {
+      await sql`
+        UPDATE lotes 
+        SET 
+          status = 'encerrado', 
+          data_saida = CURRENT_DATE, 
+          preco_venda_arroba = ${precoVenda}
+        WHERE id = ${lote_id}
+      `;
+    }
 
     return NextResponse.json({
-      message: 'Lote fechado com sucesso!',
+      message: confirm ? 'Lote encerrado com sucesso!' : 'Simulação de faturamento concluída!',
       nome_lote: lote.nome_lote,
       peso_medio_venda_kg: pesoMedioVenda,
       total_arrobas_venda: totalArrobasVenda,
@@ -88,7 +86,8 @@ export async function POST(request: Request) {
       custo_aquisicao: custoAquisicao,
       custo_tratos: custoTratosTotal,
       custo_total: custoTotal,
-      lucro_liquido: lucroLiquido
+      lucro_liquido: lucroLiquido,
+      simulado: !confirm
     }, { status: 200 });
 
   } catch (error: any) {
