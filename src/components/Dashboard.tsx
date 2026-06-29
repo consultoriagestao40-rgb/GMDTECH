@@ -114,6 +114,31 @@ export default function Dashboard() {
     }
   };
 
+  // Excluir Lote Permanentemente
+  const handleDeleteLote = async () => {
+    if (!selectedLoteId) return;
+    const confirmDelete = window.confirm("ATENÇÃO: Deseja realmente excluir este lote e TODOS os seus tratos e pesagens permanentemente? Esta ação não poderá ser desfeita.");
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/lotes?id=${selectedLoteId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        alert("Lote e todos os dados associados foram excluídos com sucesso.");
+        setSelectedLoteId(null);
+        loadDashboardData();
+      } else {
+        const errData = await res.json();
+        alert(`Erro ao excluir: ${errData.error}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao conectar com o banco de dados.");
+    }
+  };
+
   // Submeter Novo Lote
   const handleCreateLote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -570,6 +595,10 @@ export default function Dashboard() {
                   <button onClick={handleFechamento} style={styles.closeBtn}>
                     Fechar Lote e Calcular Lucro
                   </button>
+
+                  <button onClick={handleDeleteLote} style={styles.deleteBtn}>
+                    Excluir Lote Permanentemente
+                  </button>
                 </div>
               ) : (
                 <div style={styles.fechamentoInfoBox}>
@@ -605,15 +634,20 @@ export default function Dashboard() {
                     </div>
                   </div>
                   
-                  <button 
-                    onClick={() => {
-                      setFechamentoInfo(null);
-                      loadDashboardData();
-                    }} 
-                    style={styles.resetBtn}
-                  >
-                    Simular Nova Cotação
-                  </button>
+                  <div style={styles.closedActions}>
+                    <button 
+                      onClick={() => {
+                        setFechamentoInfo(null);
+                        loadDashboardData();
+                      }} 
+                      style={styles.resetBtn}
+                    >
+                      Simular Nova Cotação
+                    </button>
+                    <button onClick={handleDeleteLote} style={styles.deleteBtn}>
+                      Excluir Lote Permanentemente
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -972,5 +1006,23 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center'
+  },
+  deleteBtn: {
+    backgroundColor: 'transparent',
+    color: 'var(--color-danger)',
+    padding: '0.75rem',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 600,
+    cursor: 'pointer',
+    textAlign: 'center',
+    border: '1px solid var(--color-danger)',
+    fontSize: '0.85rem',
+    transition: 'all var(--transition-fast)'
+  },
+  closedActions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+    marginTop: 'auto'
   }
 };

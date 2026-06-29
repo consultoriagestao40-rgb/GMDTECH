@@ -71,3 +71,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao salvar o lote no Neon DB', details: error.message }, { status: 500 });
   }
 }
+
+// DELETE: Excluir um lote específico (e em cascata seus tratos e pesagens)
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID do lote ausente.' }, { status: 400 });
+    }
+
+    const loteId = parseInt(id);
+
+    // O cascade delete configurado no PostgreSQL cuidará de excluir os tratos e pesagens
+    await sql`
+      DELETE FROM lotes 
+      WHERE id = ${loteId}
+    `;
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Lote e todos os dados associados foram excluídos com sucesso!' 
+    }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Erro ao excluir lote:', error);
+    return NextResponse.json({ error: 'Erro ao excluir lote no Neon DB', details: error.message }, { status: 500 });
+  }
+}
+
