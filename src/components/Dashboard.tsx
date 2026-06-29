@@ -58,6 +58,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(true);
   const [fechamentoInfo, setFechamentoInfo] = useState<any | null>(null);
   const [precoVendaInput, setPrecoVendaInput] = useState<string>('300.00'); // Valor médio do mercado R$/@
+  
+  // Estados para o Gráfico (Lote vs Individual)
+  const [chartViewMode, setChartViewMode] = useState<'lote' | 'individual'>('lote');
+  const [selectedAnimalIdForChart, setSelectedAnimalIdForChart] = useState<number | null>(null);
+  const [animalHistoricoPesagens, setAnimalHistoricoPesagens] = useState<PesagemHistorico[]>([]);
+  const [loadingAnimalChart, setLoadingAnimalChart] = useState<boolean>(false);
 
   // Estados para Ações Individuais (Modais)
   const [activeAnimalId, setActiveAnimalId] = useState<number | null>(null);
@@ -118,11 +124,41 @@ export default function Dashboard() {
         const data = await res.json();
         setHistoricoPesagens(data.historico || []);
         setAnimais(data.animais || []);
+        if (data.animais && data.animais.length > 0) {
+          setSelectedAnimalIdForChart(data.animais[0].id);
+        } else {
+          setSelectedAnimalIdForChart(null);
+        }
       }
     } catch (e) {
       console.error('Erro ao buscar detalhamento do lote:', e);
     }
   };
+
+  // Carregar histórico de pesagens do animal selecionado para o gráfico individual
+  useEffect(() => {
+    if (chartViewMode !== 'individual' || !selectedAnimalIdForChart) {
+      setAnimalHistoricoPesagens([]);
+      return;
+    }
+
+    const loadAnimalHistory = async () => {
+      setLoadingAnimalChart(true);
+      try {
+        const res = await fetch(`/api/animais?animal_id=${selectedAnimalIdForChart}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAnimalHistoricoPesagens(data.historico || []);
+        }
+      } catch (e) {
+        console.error('Erro ao buscar histórico de pesagens do animal:', e);
+      } finally {
+        setLoadingAnimalChart(false);
+      }
+    };
+
+    loadAnimalHistory();
+  }, [selectedAnimalIdForChart, chartViewMode]);
 
   const handleFechamento = async () => {
     if (!selectedLoteId) return;
@@ -362,14 +398,42 @@ export default function Dashboard() {
 
     const ciclo_dias = activeLote.ciclo_dias || 90;
     const gmdEst = activeLote.gmd_estimado || 1.500;
-    const pesoIni = activeLote.peso_medio_entrada || 300;
+
+    // Configurar pontos iniciais e dados baseados no modo de exibição (Lote ou Individual)
+    let pesoIni = activeLote.peso_medio_entrada || 300;
+    let titleReal = 'Realizado (Média do Lote)';
+    let realPointsRaw: PesagemHistorico[] = [];
+
+    if (chartViewMode === 'individual') {
+      if (loadingAnimalChart) {
+        return (
+          <div style={styles.emptyChart}>
+            <RefreshCw size={24} className="animate-spin" color="var(--color-brand)" style={{ marginBottom: '8px' }} />
+            <span>Carregando pesagens do animal...</span>
+          </div>
+        );
+      }
+      const activeAnimal = animais.find(a => a.id === selectedAnimalIdForChart);
+      if (!activeAnimal) {
+        return (
+          <div style={styles.emptyChart}>
+            <BarChart2 size={24} style={{ marginBottom: '8px' }} />
+            <span>Selecione um animal acima para ver o gráfico.</span>
+          </div>
+        );
+      }
+      pesoIni = activeAnimal.peso_entrada;
+      titleReal = `Realizado (Boi ${activeAnimal.brinco})`;
+      realPointsRaw = [...animalHistoricoPesagens];
+    } else {
+      realPointsRaw = [...historicoPesagens];
+    }
 
     // Linha Teórica de Projeção (Meta)
     const pesoProjetadoFim = pesoIni + gmdEst * ciclo_dias;
 
-    // Coletar pesos reais
-    const pontosReaisRaw = [...historicoPesagens];
-    pontosReaisRaw.sort((a, b) => (a.dias || 0) - (b.dias || 0));
+    // Coletar pesos reais ordenados cronologicamente
+    realPointsRaw.sort((a, b) => (a.dias || 0) - (b.dias || 0));
 
     const realPoints: { dias: number; peso: number; label: string }[] = [];
     
@@ -381,7 +445,7 @@ export default function Dashboard() {
     });
 
     // Adicionar outros pontos do histórico real
-    pontosReaisRaw.forEach(p => {
+    realPointsRaw.forEach(p => {
       if (p.dias > 0) {
         realPoints.push({
           dias: p.dias,
@@ -437,7 +501,7 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <div style={{ width: '12px', height: '3px', backgroundColor: 'var(--color-brand)', borderRadius: '1px' }}></div>
-            <span style={{ color: 'var(--text-secondary)' }}>Realizado (Média do Lote)</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{titleReal}</span>
           </div>
         </div>
 
@@ -627,11 +691,75 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Gráfico e Operações do Lote */}
-          <div style={styles.row}>
             {/* Gráfico */}
             <div className="glass-panel" style={styles.chartPanel}>
-              <h3 style={styles.panelTitle}>Evolução de Peso & GMD</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{ ...styles.panelTitle, marginBottom: 0 }}>Evolução de Peso & GMD</h3>
+                
+                {/* Seletores de Modo de Visualização */}
+                <div style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', padding: '2px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                  <button 
+                    onClick={() => setChartViewMode('lote')}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: chartViewMode === 'lote' ? 'var(--color-brand)' : 'transparent',
+                      color: chartViewMode === 'lote' ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      border: 'none',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    Média Lote
+                  </button>
+                  <button 
+                    onClick={() => setChartViewMode('individual')}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: chartViewMode === 'individual' ? 'var(--color-brand)' : 'transparent',
+                      color: chartViewMode === 'individual' ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      border: 'none',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    Individual (Boi)
+                  </button>
+                </div>
+              </div>
+
+              {/* Seletor de Animal (Apenas em modo individual) */}
+              {chartViewMode === 'individual' && animais.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', backgroundColor: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Filtrar por brinco:</span>
+                  <select
+                    value={selectedAnimalIdForChart || ''}
+                    onChange={(e) => setSelectedAnimalIdForChart(Number(e.target.value))}
+                    style={{
+                      padding: '0.35rem 0.5rem',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: '#fff',
+                      fontSize: '0.8rem',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {animais.map((animal) => (
+                      <option key={animal.id} value={animal.id}>
+                        Brinco {animal.brinco} ({animal.status === 'ativo' ? '🟢 ativo' : '🔴 vendido'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {renderGmdChart()}
             </div>
 

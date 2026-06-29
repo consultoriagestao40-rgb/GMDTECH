@@ -146,3 +146,58 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Erro ao salvar venda de animal no Neon DB.', details: error.message }, { status: 500 });
   }
 }
+
+// GET: Retornar histórico de pesagens de um animal específico para o gráfico
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const animalIdParam = searchParams.get('animal_id');
+
+    if (!animalIdParam) {
+      return NextResponse.json({ error: 'ID do animal é obrigatório.' }, { status: 400 });
+    }
+
+    const animalId = parseInt(animalIdParam);
+
+    // Buscar dados do animal
+    const animalResult = await sql`
+      SELECT id, brinco, peso_entrada, status, data_entrada, data_saida, peso_saida, lote_id
+      FROM animais 
+      WHERE id = ${animalId}
+    `;
+
+    if (animalResult.length === 0) {
+      return NextResponse.json({ error: 'Animal não encontrado.' }, { status: 404 });
+    }
+
+    const animal = animalResult[0];
+
+    // Buscar histórico de pesagens do animal ordenados por data
+    const pesagens = await sql`
+      SELECT id, peso, data_pesagem
+      FROM pesagens
+      WHERE animal_id = ${animalId}
+      ORDER BY data_pesagem ASC
+    `;
+
+    const dataEntrada = new Date(animal.data_entrada);
+
+    const historico = pesagens.map((p: any) => {
+      const dataPesagem = new Date(p.data_pesagem);
+      const diffTime = Math.abs(dataPesagem.getTime() - dataEntrada.getTime());
+      const dias = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      return {
+        id: p.id,
+        peso: parseFloat(p.peso),
+        data: dataPesagem.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        dias: dias
+      };
+    });
+
+    return NextResponse.json({ animal, historico }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Erro ao buscar histórico de pesagens do animal:', error);
+    return NextResponse.json({ error: 'Erro no Neon DB', details: error.message }, { status: 500 });
+  }
+}
