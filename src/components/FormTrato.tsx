@@ -202,7 +202,7 @@ export default function FormTrato() {
             required
           >
             <option value="">Selecione o Lote...</option>
-            {localLotes.map((lote) => (
+            {localLotes.slice().sort((a, b) => a.nome_lote.localeCompare(b.nome_lote, undefined, { numeric: true, sensitivity: 'base' })).map((lote) => (
               <option key={lote.id} value={lote.id}>
                 {lote.nome_lote} ({lote.qtd_cabecas} cab.)
               </option>

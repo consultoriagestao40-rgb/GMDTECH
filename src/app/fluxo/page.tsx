@@ -70,9 +70,12 @@ export default function FluxoPage() {
         const resGmd = await fetch('/api/gmd');
         if (resGmd.ok) {
           const data = await resGmd.json();
-          setLotes(data.stats || []);
-          if (data.stats && data.stats.length > 0) {
-            setSelectedLoteId(String(data.stats[0].id));
+          const sortedStats = (data.stats || []).sort((a: any, b: any) => 
+            a.nome_lote.localeCompare(b.nome_lote, undefined, { numeric: true, sensitivity: 'base' })
+          );
+          setLotes(sortedStats);
+          if (sortedStats.length > 0) {
+            setSelectedLoteId(String(sortedStats[0].id));
           }
         }
         

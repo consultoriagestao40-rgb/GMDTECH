@@ -33,11 +33,14 @@ export default function PremissasPage() {
       const res = await fetch('/api/premissas');
       if (res.ok) {
         const data = await res.json();
-        setLotes(data.lotes || []);
+        const sortedLotes = (data.lotes || []).sort((a: any, b: any) => 
+          a.nome_lote.localeCompare(b.nome_lote, undefined, { numeric: true, sensitivity: 'base' })
+        );
+        setLotes(sortedLotes);
         
         // Pré-selecionar o primeiro se houver lotes
-        if (data.lotes && data.lotes.length > 0) {
-          const firstLote = data.lotes[0];
+        if (sortedLotes.length > 0) {
+          const firstLote = sortedLotes[0];
           setSelectedLoteId(String(firstLote.id));
           setDiasAdaptacao(String(firstLote.dias_adaptacao));
           setTaxaAdaptacao(String(firstLote.taxa_adaptacao));
