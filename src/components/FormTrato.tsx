@@ -19,8 +19,8 @@ export default function FormTrato() {
 
   // Calcular o custo projetado em tempo real
   const selectedDieta = localDietas.find(d => d.id === Number(selectedDietaId));
-  const custoPorKg = selectedDieta ? selectedDieta.custo_por_kg : 0;
-  const estoqueDisponivel = selectedDieta ? selectedDieta.estoque_kg : 0;
+  const custoPorKg = selectedDieta ? Number(selectedDieta.custo_por_kg) : 0;
+  const estoqueDisponivel = selectedDieta ? Number(selectedDieta.estoque_kg) : 0;
   
   const kgNum = parseFloat(kgAlimentado) || 0;
   const custoProjetado = kgNum * custoPorKg;
@@ -149,7 +149,7 @@ export default function FormTrato() {
             <option value="">Selecione a Dieta...</option>
             {localDietas.map((dieta) => (
               <option key={dieta.id} value={dieta.id}>
-                {dieta.nome_dieta} (R$ {dieta.custo_por_kg.toFixed(2)}/kg)
+                {dieta.nome_dieta} (R$ {Number(dieta.custo_por_kg).toFixed(2)}/kg)
               </option>
             ))}
           </select>
