@@ -6,6 +6,7 @@ import { ArrowLeft, UserPlus, Users, Trash2, Shield, RefreshCw, AlertCircle, Che
 
 interface Usuario {
   id: number;
+  nome: string;
   email: string;
   senha: string;
   role: string;
@@ -16,6 +17,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState<boolean>(true);
   
   // Form states
+  const [nome, setNome] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [role, setRole] = useState<string>('operador');
@@ -45,7 +47,7 @@ export default function UsuariosPage() {
   // Cadastrar usuário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!nome || !email || !password) {
       setStatusMessage({ type: 'error', text: 'Preencha todos os campos obrigatórios.' });
       return;
     }
@@ -57,13 +59,14 @@ export default function UsuariosPage() {
       const res = await fetch('/api/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
+        body: JSON.stringify({ nome, email, password, role })
       });
 
       const data = await res.json();
 
       if (res.ok) {
         setStatusMessage({ type: 'success', text: 'Usuário cadastrado com sucesso!' });
+        setNome('');
         setEmail('');
         setPassword('');
         setRole('operador');
@@ -152,6 +155,18 @@ export default function UsuariosPage() {
           
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.formGroup}>
+              <label style={styles.label}>Nome Completo</label>
+              <input 
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex: Cristiano Godoi"
+                style={styles.input}
+                required
+              />
+            </div>
+
+            <div style={styles.formGroup}>
               <label style={styles.label}>E-mail</label>
               <input 
                 type="email"
@@ -217,6 +232,7 @@ export default function UsuariosPage() {
               <table style={styles.table}>
                 <thead>
                   <tr>
+                    <th style={styles.th}>Nome</th>
                     <th style={styles.th}>E-mail</th>
                     <th style={styles.th}>Senha</th>
                     <th style={styles.th}>Nível</th>
@@ -226,6 +242,7 @@ export default function UsuariosPage() {
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id}>
+                      <td style={{ ...styles.td, fontWeight: 600, color: '#fff' }}>{u.nome}</td>
                       <td style={styles.td}>{u.email}</td>
                       <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 600 }}>{u.senha}</td>
                       <td style={styles.td}>

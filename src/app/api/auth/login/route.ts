@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     // Buscar usuário pelo e-mail
     const userResult = await sql`
-      SELECT id, email, senha, role 
+      SELECT id, nome, email, senha, role 
       FROM usuarios 
       WHERE LOWER(email) = LOWER(${email.trim()})
     `;
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       success: true,
       user: {
         id: user.id,
+        nome: user.nome,
         email: user.email,
         role: user.role
       }

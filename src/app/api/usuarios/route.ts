@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const users = await sql`
-      SELECT id, email, senha, role 
+      SELECT id, nome, email, senha, role 
       FROM usuarios 
       ORDER BY email ASC
     `;
@@ -24,10 +24,10 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, role } = body;
+    const { nome, email, password, role } = body;
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
+    if (!nome || !email || !password) {
+      return NextResponse.json({ error: 'Nome, e-mail e senha são obrigatórios.' }, { status: 400 });
     }
 
     const emailTrim = email.trim().toLowerCase();
@@ -44,8 +44,8 @@ export async function POST(request: Request) {
 
     // Inserir novo usuário
     await sql`
-      INSERT INTO usuarios (email, senha, role) 
-      VALUES (${emailTrim}, ${password}, ${userRole})
+      INSERT INTO usuarios (nome, email, senha, role) 
+      VALUES (${nome.trim()}, ${emailTrim}, ${password}, ${userRole})
     `;
 
     return NextResponse.json({ success: true, message: 'Usuário cadastrado com sucesso!' }, { status: 201 });

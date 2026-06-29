@@ -116,13 +116,14 @@ VALUES (15, 1.00, 2.20, 1.500);
 -- Tabela de Usuários e Autenticação
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL DEFAULT 'Usuário GMDTech',
     email VARCHAR(255) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'admin'
 );
 
 -- Seed de Usuário Administrador Inicial (Com variações para evitar bloqueio por digitação)
-INSERT INTO usuarios (email, senha, role) VALUES 
-('cristiano.godoi@hotmail.com', '123456', 'admin'),
-('critiano.godoi@homtmail.com', '123456', 'admin')
+INSERT INTO usuarios (nome, email, senha, role) VALUES 
+('Cristiano Godoi', 'cristiano.godoi@hotmail.com', '123456', 'admin'),
+('Cristiano Godoi', 'critiano.godoi@homtmail.com', '123456', 'admin')
 ON CONFLICT (email) DO NOTHING;
