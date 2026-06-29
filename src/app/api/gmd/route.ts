@@ -38,7 +38,16 @@ export async function GET(request: Request) {
         ORDER BY a.status ASC, a.brinco ASC
       `;
 
-      // Calcular o GMD individual de cada animal
+      // Buscar tratos para rateio do custo de alimentação por animal
+      const tratosLote = await sql`
+        SELECT data_trato, custo_total_trato 
+        FROM tratos 
+        WHERE lote_id = ${loteId}
+      `;
+
+      const custoAquisicaoIndividual = parseFloat(lote.custo_aquisicao_total) / lote.qtd_cabecas;
+
+      // Calcular o GMD individual e os custos acumulados de cada animal
       const animais = animaisResult.map((animal: any) => {
         const dEntrada = new Date(animal.data_entrada);
         const dFim = animal.data_saida ? new Date(animal.data_saida) : new Date();
@@ -48,6 +57,25 @@ export async function GET(request: Request) {
         const pEntrada = parseFloat(animal.peso_entrada);
         const pAtual = parseFloat(animal.peso_atual);
         const gmd = (pAtual - pEntrada) / dias;
+
+        // Ratear custos de alimentação do lote
+        let custoAlimentacaoIndividual = 0;
+        tratosLote.forEach((trato: any) => {
+          const dataTrato = new Date(trato.data_trato);
+          // Contar quantos animais estavam ativos na data deste trato
+          const activeCount = animaisResult.filter((a: any) => {
+            const ent = new Date(a.data_entrada);
+            const sai = a.data_saida ? new Date(a.data_saida) : null;
+            return dataTrato >= ent && (!sai || dataTrato <= sai);
+          }).length;
+
+          if (activeCount > 0) {
+            const sai = animal.data_saida ? new Date(animal.data_saida) : null;
+            if (dataTrato >= dEntrada && (!sai || dataTrato <= sai)) {
+              custoAlimentacaoIndividual += parseFloat(trato.custo_total_trato) / activeCount;
+            }
+          }
+        });
 
         return {
           id: animal.id,
@@ -61,7 +89,10 @@ export async function GET(request: Request) {
           preco_venda_arroba: animal.preco_venda_arroba ? parseFloat(animal.preco_venda_arroba) : null,
           rendimento_carcaca_real: animal.rendimento_carcaca_real ? parseFloat(animal.rendimento_carcaca_real) : null,
           dias_confinamento: dias,
-          gmd: Math.max(0, gmd)
+          gmd: Math.max(0, gmd),
+          custo_aquisicao: custoAquisicaoIndividual,
+          custo_alimentacao: custoAlimentacaoIndividual,
+          custo_total: custoAquisicaoIndividual + custoAlimentacaoIndividual
         };
       });
 

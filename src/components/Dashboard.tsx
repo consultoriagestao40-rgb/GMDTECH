@@ -44,6 +44,9 @@ interface Animal {
   rendimento_carcaca_real: number | null;
   dias_confinamento: number;
   gmd: number;
+  custo_aquisicao: number;
+  custo_alimentacao: number;
+  custo_total: number;
 }
 
 export default function Dashboard() {
@@ -598,6 +601,7 @@ export default function Dashboard() {
                     <th style={styles.th}>Peso de Entrada</th>
                     <th style={styles.th}>Peso Atual/Saída</th>
                     <th style={styles.th}>GMD Individual</th>
+                    <th style={styles.th}>Custo Acumulado</th>
                     <th style={styles.th}>Status</th>
                     <th style={styles.th}>Ações</th>
                   </tr>
@@ -627,6 +631,14 @@ export default function Dashboard() {
                         <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
                           +{animal.gmd.toFixed(3)} kg/dia
                         </span>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: 600, color: '#fff' }}>
+                          R$ {animal.custo_total ? animal.custo_total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                          Aq: R$ {animal.custo_aquisicao ? animal.custo_aquisicao.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '0'} | Al: R$ {animal.custo_alimentacao ? animal.custo_alimentacao.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '0'}
+                        </div>
                       </td>
                       <td style={styles.td}>
                         <span style={{
