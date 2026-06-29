@@ -21,6 +21,7 @@ interface LoteStats {
   arrobas_produzidas_total: number;
   custo_por_arroba_produzida: number;
   status: string;
+  rendimento_carcaca_previsto: number;
 }
 
 interface PesagemHistorico {
