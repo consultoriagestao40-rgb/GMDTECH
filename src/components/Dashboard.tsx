@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Award, Users, RefreshCw, BarChart2, Calendar, Target } from 'lucide-react';
+import { DollarSign, TrendingUp, Award, Users, RefreshCw, BarChart2, Calendar, Target, AlertTriangle } from 'lucide-react';
 
 interface LoteStats {
   id: number;
