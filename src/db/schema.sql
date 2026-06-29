@@ -18,7 +18,11 @@ CREATE TABLE lotes (
     status VARCHAR(20) NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'encerrado')),
     data_saida DATE,
     preco_venda_arroba NUMERIC(10, 2) CHECK (preco_venda_arroba >= 0),
-    rendimento_carcaca_previsto NUMERIC(5, 2) DEFAULT 54.00 CHECK (rendimento_carcaca_previsto > 0 AND rendimento_carcaca_previsto <= 100)
+    rendimento_carcaca_previsto NUMERIC(5, 2) DEFAULT 54.00 CHECK (rendimento_carcaca_previsto > 0 AND rendimento_carcaca_previsto <= 100),
+    dias_adaptacao INTEGER NOT NULL DEFAULT 15,
+    taxa_adaptacao NUMERIC(5, 2) NOT NULL DEFAULT 1.00,
+    taxa_engorda NUMERIC(5, 2) NOT NULL DEFAULT 2.20,
+    gmd_estimado NUMERIC(5, 3) NOT NULL DEFAULT 1.500
 );
 
 -- Tabela de Dietas
@@ -94,3 +98,16 @@ INSERT INTO pesagens (animal_id, data_pesagem, peso) VALUES
 (3, '2026-05-01 08:10:00-03', 310.00),
 (4, '2026-05-01 08:15:00-03', 280.00),
 (5, '2026-05-01 08:20:00-03', 320.00);
+
+-- Tabela de Premissas de Trato (Parâmetros)
+CREATE TABLE premissas_trato (
+    id SERIAL PRIMARY KEY,
+    dias_adaptacao INTEGER NOT NULL DEFAULT 15,
+    taxa_adaptacao NUMERIC(5, 2) NOT NULL DEFAULT 1.00,
+    taxa_engorda NUMERIC(5, 2) NOT NULL DEFAULT 2.20,
+    gmd_estimado NUMERIC(5, 3) NOT NULL DEFAULT 1.500
+);
+
+-- Seeding inicial para premissas
+INSERT INTO premissas_trato (dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado)
+VALUES (15, 1.00, 2.20, 1.500);

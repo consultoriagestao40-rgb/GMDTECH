@@ -21,6 +21,11 @@ export async function POST(request: Request) {
     const pesoTotal = parseFloat(peso_total_entrada);
     const custoAquisicao = parseFloat(custo_aquisicao_total);
     const rendimento = parseFloat(rendimento_carcaca_previsto || '54');
+    
+    const da = parseInt(body.dias_adaptacao || '15');
+    const ta = parseFloat(body.taxa_adaptacao || '1.0');
+    const te = parseFloat(body.taxa_engorda || '2.2');
+    const gmd = parseFloat(body.gmd_estimado || '1.500');
 
     if (cabecas <= 0 || pesoTotal <= 0 || custoAquisicao < 0) {
       return NextResponse.json({ error: 'Valores numéricos inválidos.' }, { status: 400 });
@@ -35,7 +40,11 @@ export async function POST(request: Request) {
         peso_total_entrada, 
         custo_aquisicao_total, 
         status, 
-        rendimento_carcaca_previsto
+        rendimento_carcaca_previsto,
+        dias_adaptacao,
+        taxa_adaptacao,
+        taxa_engorda,
+        gmd_estimado
       )
       VALUES (
         ${nome_lote}, 
@@ -44,7 +53,11 @@ export async function POST(request: Request) {
         ${pesoTotal}, 
         ${custoAquisicao}, 
         'ativo', 
-        ${rendimento}
+        ${rendimento},
+        ${da},
+        ${ta},
+        ${te},
+        ${gmd}
       )
       RETURNING id
     `;
@@ -118,7 +131,7 @@ export async function DELETE(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto } = body;
+    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado } = body;
 
     if (!id || !nome_lote) {
       return NextResponse.json({ error: 'ID e Nome do lote são obrigatórios.' }, { status: 400 });
@@ -127,13 +140,22 @@ export async function PUT(request: Request) {
     const loteId = parseInt(id);
     const custo = parseFloat(custo_aquisicao_total || '0');
     const rend = parseFloat(rendimento_carcaca_previsto || '54');
+    
+    const da = parseInt(dias_adaptacao || '15');
+    const ta = parseFloat(taxa_adaptacao || '1.0');
+    const te = parseFloat(taxa_engorda || '2.2');
+    const gmd = parseFloat(gmd_estimado || '1.500');
 
     await sql`
       UPDATE lotes 
       SET nome_lote = ${nome_lote},
           data_entrada = ${new Date(data_entrada)},
           custo_aquisicao_total = ${custo},
-          rendimento_carcaca_previsto = ${rend}
+          rendimento_carcaca_previsto = ${rend},
+          dias_adaptacao = ${da},
+          taxa_adaptacao = ${ta},
+          taxa_engorda = ${te},
+          gmd_estimado = ${gmd}
       WHERE id = ${loteId}
     `;
 

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       const loteId = parseInt(loteIdParam);
       
       const loteResult = await sql`
-        SELECT id, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto
+        SELECT id, nome_lote, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado
         FROM lotes 
         WHERE id = ${loteId}
       `;
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
 
     // 2. Retornar dados agregados de todos os lotes para o Dashboard
     const lotesDb = await sql`
-      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto
+      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado
       FROM lotes 
       ORDER BY status ASC, data_entrada DESC
     `;
@@ -215,7 +215,11 @@ export async function GET(request: Request) {
         arrobas_produzidas_total: arrobasProduzidasTotal,
         custo_por_arroba_produzida: custoPorArrobaProduzida,
         status: lote.status,
-        rendimento_carcaca_previsto: parseFloat(lote.rendimento_carcaca_previsto)
+        rendimento_carcaca_previsto: parseFloat(lote.rendimento_carcaca_previsto),
+        dias_adaptacao: parseInt(lote.dias_adaptacao),
+        taxa_adaptacao: parseFloat(lote.taxa_adaptacao),
+        taxa_engorda: parseFloat(lote.taxa_engorda),
+        gmd_estimado: parseFloat(lote.gmd_estimado)
       };
     }));
 

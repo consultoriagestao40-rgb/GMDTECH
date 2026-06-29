@@ -13,6 +13,12 @@ export default function FormTrato() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Estados para a Sugestão de Trato baseada em premissas do lote
+  const [sugestaoKg, setSugestaoKg] = useState<number | null>(null);
+  const [totalPesoEstimado, setTotalPesoEstimado] = useState<number | null>(null);
+  const [loteParams, setLoteParams] = useState<any | null>(null);
+  const [calculatingSuggestion, setCalculatingSuggestion] = useState<boolean>(false);
+
   // Carregar dados de cache local (Dexie) de forma reativa
   const localLotes = useLiveQuery(() => db.lotes.where('status').equals('ativo').toArray()) ?? [];
   const localDietas = useLiveQuery(() => db.dietas.toArray()) ?? [];
@@ -37,6 +43,79 @@ export default function FormTrato() {
       setSelectedDietaId(localDietas[0].id.toString());
     }
   }, [localLotes, localDietas]);
+
+  // Buscar animais do lote e calcular consumo sugerido (premissas por lote)
+  useEffect(() => {
+    if (!selectedLoteId) {
+      setSugestaoKg(null);
+      setTotalPesoEstimado(null);
+      setLoteParams(null);
+      return;
+    }
+
+    const calculateLoteSuggestion = async () => {
+      setCalculatingSuggestion(true);
+      try {
+        const res = await fetch(`/api/gmd?lote_id=${selectedLoteId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const lote = data.lote;
+          const animaisAtivos = (data.animais || []).filter((a: any) => a.status === 'ativo');
+
+          if (!lote || animaisAtivos.length === 0) {
+            setSugestaoKg(0);
+            setTotalPesoEstimado(0);
+            setLoteParams(null);
+            return;
+          }
+
+          // Parâmetros de premissas específicos do lote
+          const da = parseInt(lote.dias_adaptacao ?? '15');
+          const ta = parseFloat(lote.taxa_adaptacao ?? '1.0');
+          const te = parseFloat(lote.taxa_engorda ?? '2.2');
+          const gmd = parseFloat(lote.gmd_estimado ?? '1.500');
+
+          setLoteParams({
+            dias_adaptacao: da,
+            taxa_adaptacao: ta,
+            taxa_engorda: te,
+            gmd_estimado: gmd
+          });
+
+          let sumConsumo = 0;
+          let sumPeso = 0;
+          const hoje = new Date();
+
+          animaisAtivos.forEach((animal: any) => {
+            const dEntrada = new Date(animal.data_entrada);
+            const diffTime = hoje.getTime() - dEntrada.getTime();
+            const dias = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+
+            // Peso Estimado = Peso Entrada + GMD Estimado * dias confinado
+            const pesoEstimado = parseFloat(animal.peso_entrada) + (gmd * dias);
+            sumPeso += pesoEstimado;
+
+            // Se dias <= dias_adaptacao, consome taxa_adaptacao. Senão, taxa_engorda
+            const taxa = (dias <= da) ? ta : te;
+            const consumo = pesoEstimado * (taxa / 100);
+            sumConsumo += consumo;
+          });
+
+          setSugestaoKg(sumConsumo);
+          setTotalPesoEstimado(sumPeso);
+        } else {
+          setSugestaoKg(null);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar dados do lote para sugestão:', err);
+        setSugestaoKg(null);
+      } finally {
+        setCalculatingSuggestion(false);
+      }
+    };
+
+    calculateLoteSuggestion();
+  }, [selectedLoteId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,13 +163,10 @@ export default function FormTrato() {
 
       // Se estiver online, tentar sincronizar imediatamente no background
       if (navigator.onLine) {
-        // Enviar evento de sincronização
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           const registration = await navigator.serviceWorker.ready;
           await (registration as any).sync.register('gmdtech-sync-tratos');
         } else {
-          // Fallback se Background Sync não for suportado (Safari/Firefox)
-          // Dispara evento de sync programático (a ser pego pelo NetworkStatus ou executado aqui)
           window.dispatchEvent(new Event('online'));
         }
       }
@@ -160,6 +236,43 @@ export default function FormTrato() {
             </div>
           )}
         </div>
+
+        {/* BOX DE SUGESTÃO BASEADA NAS PREMISSAS DO LOTE */}
+        {selectedLoteId && (
+          <div style={styles.suggestionBox}>
+            {calculatingSuggestion ? (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Calculando sugestão com base nas premissas...
+              </div>
+            ) : sugestaoKg !== null && loteParams ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Sugestão de Trato para Hoje:
+                  </span>
+                  <strong style={{ color: 'var(--color-brand)', fontSize: '1rem' }}>
+                    {sugestaoKg.toFixed(1)} kg
+                  </strong>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35, marginTop: '0.15rem' }}>
+                  • Peso lote estimado: {totalPesoEstimado?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} kg vivo.<br />
+                  • Parâmetros do Lote: Adaptação {loteParams.taxa_adaptacao}% ({loteParams.dias_adaptacao} dias) | Engorda {loteParams.taxa_engorda}% | GMD {loteParams.gmd_estimado} kg/dia.
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setKgAlimentado(sugestaoKg.toFixed(2))}
+                  style={styles.suggestionBtn}
+                >
+                  Usar Quantidade Sugerida ({sugestaoKg.toFixed(1)} kg)
+                </button>
+              </>
+            ) : (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                ℹ️ Sugestão de consumo indisponível no momento (modo offline).
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Input de Kilogramas */}
         <div style={styles.inputGroup}>
@@ -248,52 +361,76 @@ const styles: Record<string, React.CSSProperties> = {
     paddingBottom: '0.75rem'
   },
   title: {
-    fontSize: '1.3rem',
+    fontSize: '1.25rem',
     fontWeight: 600,
     color: '#fff'
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.25rem'
+    gap: '1rem'
   },
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem'
+    gap: '0.35rem'
   },
   label: {
     fontSize: '0.85rem',
-    fontWeight: 500,
     color: 'var(--text-secondary)',
+    fontWeight: 500,
     display: 'flex',
     alignItems: 'center'
   },
   select: {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    borderRadius: 'var(--radius-sm)',
+    padding: '0.75rem',
+    borderRadius: 'var(--radius-md)',
     border: '1px solid var(--border-color)',
     backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-primary)',
+    color: '#fff',
+    fontSize: '0.95rem',
     outline: 'none',
-    transition: 'border-color var(--transition-fast)'
-  },
-  input: {
     width: '100%',
-    padding: '0.75rem 1rem',
-    borderRadius: 'var(--radius-sm)',
-    border: '1px solid var(--border-color)',
-    backgroundColor: 'var(--bg-secondary)',
-    color: 'var(--text-primary)',
-    outline: 'none',
-    transition: 'border-color var(--transition-fast)'
+    cursor: 'pointer'
   },
   stockInfo: {
     fontSize: '0.75rem',
     color: 'var(--text-muted)',
+    marginTop: '0.25rem',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'center'
+  },
+  input: {
+    padding: '0.75rem',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border-color)',
+    backgroundColor: 'var(--bg-secondary)',
+    color: '#fff',
+    fontSize: '0.95rem',
+    outline: 'none',
+    width: '100%'
+  },
+  suggestionBox: {
+    backgroundColor: 'rgba(16, 185, 129, 0.04)',
+    border: '1px solid rgba(16, 185, 129, 0.15)',
+    borderRadius: 'var(--radius-sm)',
+    padding: '0.75rem 1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.35rem',
+    marginTop: '0.25rem'
+  },
+  suggestionBtn: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    color: 'var(--color-brand)',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    borderRadius: 'var(--radius-sm)',
+    padding: '0.45rem',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    textAlign: 'center',
+    transition: 'all var(--transition-fast)',
     marginTop: '0.25rem'
   },
   summaryBox: {

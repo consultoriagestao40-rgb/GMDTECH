@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator } from 'lucide-react';
+import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -13,7 +13,8 @@ export default function Sidebar() {
     { name: 'Painel Geral', href: '/', icon: <BarChart3 size={18} /> },
     { name: 'Novo Lote', href: '/lote', icon: <PlusCircle size={18} /> },
     { name: 'Lançar Trato', href: '/trato', icon: <Wheat size={18} /> },
-    { name: 'Formulação Ração', href: '/formulacao', icon: <Calculator size={18} /> }
+    { name: 'Formulação Ração', href: '/formulacao', icon: <Calculator size={18} /> },
+    { name: 'Premissas Trato', href: '/premissas', icon: <Sliders size={18} /> }
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
