@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
 
-// POST: Registrar nova pesagem individual OU atualizar o brinco de identificação do animal
+// POST: Registrar nova pesagem individual OU atualizar o brinco de identificação e data de entrada do animal
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { animal_id, peso, data_pesagem, brinco } = body;
+    const { animal_id, peso, data_pesagem, brinco, data_entrada } = body;
 
     if (!animal_id) {
       return NextResponse.json({ error: 'ID do animal é obrigatório.' }, { status: 400 });
@@ -31,26 +31,37 @@ export async function POST(request: Request) {
       }, { status: 201 });
     }
 
-    // Operação 2: Atualizar Identificação do Brinco
-    if (brinco) {
-      const brincoLimpo = brinco.trim().toUpperCase();
-      if (!brincoLimpo) {
-        return NextResponse.json({ error: 'O identificador do brinco não pode ser vazio.' }, { status: 400 });
+    // Operação 2: Atualizar Identificação do Brinco e/ou Data de Entrada
+    if (brinco || data_entrada) {
+      if (brinco && data_entrada) {
+        const brincoLimpo = brinco.trim().toUpperCase();
+        await sql`
+          UPDATE animais 
+          SET brinco = ${brincoLimpo}, data_entrada = ${new Date(data_entrada)}
+          WHERE id = ${animalId}
+        `;
+      } else if (brinco) {
+        const brincoLimpo = brinco.trim().toUpperCase();
+        await sql`
+          UPDATE animais 
+          SET brinco = ${brincoLimpo}
+          WHERE id = ${animalId}
+        `;
+      } else if (data_entrada) {
+        await sql`
+          UPDATE animais 
+          SET data_entrada = ${new Date(data_entrada)}
+          WHERE id = ${animalId}
+        `;
       }
-
-      await sql`
-        UPDATE animais 
-        SET brinco = ${brincoLimpo}
-        WHERE id = ${animalId}
-      `;
 
       return NextResponse.json({ 
         success: true, 
-        message: 'Identificação do brinco atualizada com sucesso!' 
+        message: 'Dados do animal atualizados com sucesso!' 
       }, { status: 200 });
     }
 
-    return NextResponse.json({ error: 'Nenhuma ação (peso ou brinco) informada.' }, { status: 400 });
+    return NextResponse.json({ error: 'Nenhuma ação (peso, brinco ou data_entrada) informada.' }, { status: 400 });
 
   } catch (error: any) {
     console.error('Erro na API de animais (POST):', error);

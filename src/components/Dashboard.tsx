@@ -61,6 +61,7 @@ export default function Dashboard() {
   // Inputs dos Modais
   const [modalPeso, setModalPeso] = useState<string>('');
   const [modalBrinco, setModalBrinco] = useState<string>('');
+  const [modalDataEntrada, setModalDataEntrada] = useState<string>('');
   const [modalVendaPesoSaida, setModalVendaPesoSaida] = useState<string>('');
   const [modalVendaPrecoArroba, setModalVendaPrecoArroba] = useState<string>('300.00');
   const [modalVendaRendimento, setModalVendaRendimento] = useState<string>('54.0');
@@ -175,6 +176,7 @@ export default function Dashboard() {
         body.peso = parseFloat(modalPeso);
       } else if (modalMode === 'edicao') {
         body.brinco = modalBrinco;
+        body.data_entrada = modalDataEntrada;
       } else if (modalMode === 'venda') {
         method = 'PUT';
         body.peso_saida = parseFloat(modalVendaPesoSaida);
@@ -215,6 +217,7 @@ export default function Dashboard() {
     setModalMode(mode);
     setModalPeso('');
     setModalBrinco(animal.brinco);
+    setModalDataEntrada(animal.data_entrada ? new Date(animal.data_entrada).toISOString().split('T')[0] : '');
     setModalVendaPesoSaida(String(animal.peso_atual));
     setModalVendaPrecoArroba('300.00');
     setModalVendaRendimento('54.0');
@@ -522,7 +525,12 @@ export default function Dashboard() {
                           {animal.brinco}
                         </span>
                       </td>
-                      <td style={styles.td}>{new Date(animal.data_entrada).toLocaleDateString('pt-BR')}</td>
+                      <td style={styles.td}>
+                        <div>{new Date(animal.data_entrada).toLocaleDateString('pt-BR')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {animal.dias_confinamento} dias confinado
+                        </div>
+                      </td>
                       <td style={styles.td}>{animal.peso_entrada.toFixed(1)} kg</td>
                       <td style={styles.td}>
                         <strong style={{ color: '#fff' }}>
@@ -618,15 +626,27 @@ export default function Dashboard() {
 
               {/* Modo Edição de Brinco */}
               {modalMode === 'edicao' && (
-                <div style={styles.inputField}>
-                  <label style={styles.inputLabel}>Novo Código de Brinco:</label>
-                  <input 
-                    type="text" 
-                    value={modalBrinco}
-                    onChange={(e) => setModalBrinco(e.target.value)}
-                    style={styles.input}
-                    required
-                  />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Novo Código de Brinco:</label>
+                    <input 
+                      type="text" 
+                      value={modalBrinco}
+                      onChange={(e) => setModalBrinco(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Data de Entrada no Confinamento:</label>
+                    <input 
+                      type="date" 
+                      value={modalDataEntrada}
+                      onChange={(e) => setModalDataEntrada(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
                 </div>
               )}
 
