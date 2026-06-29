@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const loteIdParam = searchParams.get('lote_id');

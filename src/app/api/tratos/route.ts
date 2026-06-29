@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
 
+export const dynamic = 'force-dynamic';
+
 // GET: Retornar todas as dietas e estoques + lista de animais ativos para sincronização/exibição
 export async function GET() {
   try {
