@@ -132,7 +132,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lote_id: selectedLoteId,
-          preco_venda_arroba: parseFloat(precoVendaInput)
+          preco_venda_arroba: parseFloat(precoVendaInput.replace(',', '.'))
         })
       });
 
@@ -647,7 +647,7 @@ export default function Dashboard() {
                     <div style={styles.statsRow}>
                       <span>Total de @ Vendidas/Projetadas:</span>
                       <strong style={{ color: '#fff' }}>
-                        {fechamentoInfo ? fechamentoInfo.total_arrobas_venda.toFixed(2) : ((activeLote.peso_medio_atual * activeLote.cabecas_totais * (parseFloat(precoVendaInput) / 100)) / 15).toFixed(2)} @
+                        {fechamentoInfo ? fechamentoInfo.total_arrobas_venda.toFixed(2) : ((activeLote.peso_medio_atual * activeLote.cabecas_totais * (activeLote.rendimento_carcaca_previsto / 100)) / 15).toFixed(2)} @
                       </strong>
                     </div>
                     <div style={styles.statsRow}>

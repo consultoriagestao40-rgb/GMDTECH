@@ -28,21 +28,24 @@ export async function POST(request: Request) {
 
     const lote = loteResult[0];
 
-    // 2. Obter última pesagem para calcular o peso médio de venda
-    const pesagemResult = await sql`
-      SELECT peso_medio_animal 
-      FROM pesagens 
-      WHERE lote_id = ${lote_id} 
-      ORDER BY data_pesagem DESC 
-      LIMIT 1
+    // 2. Calcular o peso médio real atual dos animais ativos do lote
+    const animaisResult = await sql`
+      SELECT a.id, a.peso_entrada,
+             COALESCE(
+               (SELECT p.peso FROM pesagens p WHERE p.animal_id = a.id ORDER BY p.data_pesagem DESC LIMIT 1),
+               a.peso_entrada
+             ) as peso_atual
+      FROM animais a
+      WHERE a.lote_id = ${lote_id} AND a.status = 'ativo'
     `;
 
-    if (pesagemResult.length === 0) {
-      return NextResponse.json({ error: 'Nenhuma pesagem encontrada para este lote. Registre uma pesagem antes de fechar.' }, { status: 400 });
+    if (animaisResult.length === 0) {
+      return NextResponse.json({ error: 'Nenhum animal ativo encontrado para este lote para poder realizar o fechamento.' }, { status: 400 });
     }
 
-    const pesoMedioVenda = parseFloat(pesagemResult[0].peso_medio_animal);
-    const qtdCabecas = lote.qtd_cabecas;
+    const sumPeso = animaisResult.reduce((acc: number, cur: any) => acc + parseFloat(cur.peso_atual), 0);
+    const pesoMedioVenda = sumPeso / animaisResult.length;
+    const qtdCabecas = animaisResult.length;
     const rendimento = parseFloat(lote.rendimento_carcaca_previsto) / 100;
 
     // Fórmulas Financeiras da Pecuária de Corte:
