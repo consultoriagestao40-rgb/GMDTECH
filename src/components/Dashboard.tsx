@@ -64,6 +64,7 @@ export default function Dashboard() {
   const [selectedAnimalIdForChart, setSelectedAnimalIdForChart] = useState<number | null>(null);
   const [animalHistoricoPesagens, setAnimalHistoricoPesagens] = useState<PesagemHistorico[]>([]);
   const [loadingAnimalChart, setLoadingAnimalChart] = useState<boolean>(false);
+  const [hoveredPoint, setHoveredPoint] = useState<any | null>(null);
 
   // Estados para Ações Individuais (Modais)
   const [activeAnimalId, setActiveAnimalId] = useState<number | null>(null);
@@ -564,27 +565,99 @@ export default function Dashboard() {
             <path d={realLinePath} fill="none" stroke="var(--color-brand)" strokeWidth="2.5" strokeLinecap="round" />
           ) : null}
 
-          {realPointsCoords.map((p, idx) => (
-            <g key={idx}>
-              <circle cx={p.x} cy={p.y} r="3.5" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
-              <text 
-                x={p.dias === 0 ? p.x + 8 : p.x} 
-                y={p.dias === 0 ? p.y + 3 : p.y - 7} 
-                fill="#fff" 
-                fontSize="8" 
-                fontWeight="600" 
-                textAnchor={p.dias === 0 ? "start" : "middle"}
-              >
-                {Math.round(p.peso).toLocaleString('pt-BR')} kg
-              </text>
-              {p.dias > 0 && (
-                <text x={p.x} y={height - paddingBottom + 20} fill="var(--text-muted)" fontSize="7" textAnchor="middle">
-                  ({p.label})
+          {realPointsCoords.map((p, idx) => {
+            const pesoPrevisto = pesoIni + gmdDiario * p.dias;
+            return (
+              <g key={idx}>
+                <circle cx={p.x} cy={p.y} r="3.5" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
+                <text 
+                  x={p.dias === 0 ? p.x + 8 : p.x} 
+                  y={p.dias === 0 ? p.y + 3 : p.y - 7} 
+                  fill="#fff" 
+                  fontSize="8" 
+                  fontWeight="600" 
+                  textAnchor={p.dias === 0 ? "start" : "middle"}
+                >
+                  {Math.round(p.peso).toLocaleString('pt-BR')} kg
                 </text>
-              )}
-            </g>
-          ))}
+                {p.dias > 0 && (
+                  <text x={p.x} y={height - paddingBottom + 20} fill="var(--text-muted)" fontSize="7" textAnchor="middle">
+                    ({p.label})
+                  </text>
+                )}
+
+                {/* Área invisível maior para facilitar o hover com o mouse */}
+                <circle 
+                  cx={p.x} 
+                  cy={p.y} 
+                  r="12" 
+                  fill="transparent" 
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={() => setHoveredPoint({
+                    x: p.x,
+                    y: p.y,
+                    dias: p.dias,
+                    label: p.dias === 0 ? 'Entrada' : p.label,
+                    pesoReal: p.peso,
+                    pesoPrevisto: pesoPrevisto
+                  })}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                />
+              </g>
+            );
+          })}
         </svg>
+
+        {/* Card do Tooltip Flutuante */}
+        {hoveredPoint && (
+          <div style={{
+            position: 'absolute',
+            left: `${(hoveredPoint.x / width) * 100}%`,
+            top: `${(hoveredPoint.y / height) * 100 - 15}%`,
+            transform: 'translate(-50%, -100%)',
+            backgroundColor: 'rgba(23, 23, 37, 0.95)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '6px',
+            padding: '8px 12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+            zIndex: 10,
+            pointerEvents: 'none',
+            minWidth: '165px',
+            backdropFilter: 'blur(4px)',
+            transition: 'opacity var(--transition-fast)'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '2px', fontWeight: 600 }}>
+              Dia {hoveredPoint.dias} ({hoveredPoint.label})
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '0.8rem', margin: '2px 0' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Previsto:</span>
+              <strong style={{ color: 'var(--color-accent)' }}>{Math.round(hoveredPoint.pesoPrevisto).toLocaleString('pt-BR')} kg</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '0.8rem', margin: '2px 0' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Realizado:</span>
+              <strong style={{ color: 'var(--color-brand)' }}>{Math.round(hoveredPoint.pesoReal).toLocaleString('pt-BR')} kg</strong>
+            </div>
+            
+            {/* Desvio */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              gap: '8px', 
+              fontSize: '0.78rem', 
+              marginTop: '4px',
+              borderTop: '1px dotted rgba(255,255,255,0.08)',
+              paddingTop: '4px',
+              color: (hoveredPoint.pesoReal >= hoveredPoint.pesoPrevisto) ? 'var(--color-brand)' : 'var(--color-danger)'
+            }}>
+              <span>Desvio:</span>
+              <strong>
+                {hoveredPoint.pesoReal >= hoveredPoint.pesoPrevisto ? '+' : ''}
+                {Math.round(hoveredPoint.pesoReal - hoveredPoint.pesoPrevisto).toLocaleString('pt-BR')} kg 
+                ({hoveredPoint.pesoPrevisto > 0 ? ((hoveredPoint.pesoReal - hoveredPoint.pesoPrevisto) / hoveredPoint.pesoPrevisto * 100).toFixed(1) : 0}%)
+              </strong>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1351,7 +1424,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.9rem'
   },
   chartWrapper: {
-    marginTop: '0.5rem'
+    marginTop: '0.5rem',
+    position: 'relative'
   },
   fechamentoBox: {
     display: 'flex',
