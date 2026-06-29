@@ -60,7 +60,7 @@ export default function Dashboard() {
   const [precoVendaInput, setPrecoVendaInput] = useState<string>('300.00'); // Valor médio do mercado R$/@
   
   // Estados para o Gráfico (Lote vs Individual)
-  const [chartViewMode, setChartViewMode] = useState<'lote' | 'individual'>('lote');
+  const [chartViewMode, setChartViewMode] = useState<'lote_medio' | 'lote_total' | 'individual'>('lote_medio');
   const [selectedAnimalIdForChart, setSelectedAnimalIdForChart] = useState<number | null>(null);
   const [animalHistoricoPesagens, setAnimalHistoricoPesagens] = useState<PesagemHistorico[]>([]);
   const [loadingAnimalChart, setLoadingAnimalChart] = useState<boolean>(false);
@@ -709,26 +709,42 @@ export default function Dashboard() {
                 {/* Seletores de Modo de Visualização */}
                 <div style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', padding: '2px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
                   <button 
-                    onClick={() => setChartViewMode('lote')}
+                    onClick={() => setChartViewMode('lote_medio')}
                     style={{
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.78rem',
+                      padding: '0.35rem 0.6rem',
+                      fontSize: '0.75rem',
                       fontWeight: 600,
                       borderRadius: 'var(--radius-sm)',
-                      backgroundColor: chartViewMode === 'lote' ? 'var(--color-brand)' : 'transparent',
-                      color: chartViewMode === 'lote' ? '#fff' : 'var(--text-secondary)',
+                      backgroundColor: chartViewMode === 'lote_medio' ? 'var(--color-brand)' : 'transparent',
+                      color: chartViewMode === 'lote_medio' ? '#fff' : 'var(--text-secondary)',
                       cursor: 'pointer',
                       border: 'none',
                       transition: 'all var(--transition-fast)'
                     }}
                   >
-                    Média Lote
+                    Peso Médio (Cabeça)
+                  </button>
+                  <button 
+                    onClick={() => setChartViewMode('lote_total')}
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: chartViewMode === 'lote_total' ? 'var(--color-brand)' : 'transparent',
+                      color: chartViewMode === 'lote_total' ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      border: 'none',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    Peso Total (Lote)
                   </button>
                   <button 
                     onClick={() => setChartViewMode('individual')}
                     style={{
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.78rem',
+                      padding: '0.35rem 0.6rem',
+                      fontSize: '0.75rem',
                       fontWeight: 600,
                       borderRadius: 'var(--radius-sm)',
                       backgroundColor: chartViewMode === 'individual' ? 'var(--color-brand)' : 'transparent',
