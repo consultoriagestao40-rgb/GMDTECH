@@ -87,7 +87,7 @@ export default function FormTrato() {
         // Enviar evento de sincronização
         if ('serviceWorker' in navigator && 'SyncManager' in window) {
           const registration = await navigator.serviceWorker.ready;
-          await registration.sync.register('gmdtech-sync-tratos');
+          await (registration as any).sync.register('gmdtech-sync-tratos');
         } else {
           // Fallback se Background Sync não for suportado (Safari/Firefox)
           // Dispara evento de sync programático (a ser pego pelo NetworkStatus ou executado aqui)
