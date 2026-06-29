@@ -40,17 +40,17 @@ export async function POST(request: Request) {
 
     // 2. Processar Pesagens Offline
     for (const pesagem of pesagens) {
-      const { lote_id, peso_medio_animal, data_pesagem } = pesagem;
+      const { animal_id, peso, data_pesagem } = pesagem;
 
-      if (!lote_id || !peso_medio_animal) continue;
+      if (!animal_id || !peso) continue;
 
-      const peso = parseFloat(peso_medio_animal);
+      const pesoNum = parseFloat(peso);
       const dataIso = data_pesagem ? new Date(data_pesagem) : new Date();
 
-      // Inserir a pesagem no PostgreSQL com a data original registrada no curral
+      // Inserir a pesagem no PostgreSQL vinculada ao animal
       await sql`
-        INSERT INTO pesagens (lote_id, data_pesagem, peso_medio_animal)
-        VALUES (${lote_id}, ${dataIso}, ${peso})
+        INSERT INTO pesagens (animal_id, data_pesagem, peso)
+        VALUES (${animal_id}, ${dataIso}, ${pesoNum})
       `;
 
       sincronizadasPesagens++;

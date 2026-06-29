@@ -16,6 +16,14 @@ export interface LocalDieta {
   estoque_kg: number;
 }
 
+export interface LocalAnimal {
+  id: number;
+  lote_id: number;
+  brinco: string;
+  peso_entrada: number;
+  status: 'ativo' | 'vendido';
+}
+
 export interface LocalTrato {
   id?: number;
   lote_id: number;
@@ -31,10 +39,10 @@ export interface LocalTrato {
 
 export interface LocalPesagem {
   id?: number;
-  lote_id: number;
-  nome_lote: string; // cache do nome
+  animal_id: number;
+  brinco: string; // brinco para exibição offline
   data_pesagem: string;
-  peso_medio_animal: number;
+  peso: number;
   sync_status: 'pendente' | 'sincronizado' | 'erro';
   erro_mensagem?: string;
 }
@@ -43,16 +51,18 @@ export interface LocalPesagem {
 class GMDTechDatabase extends Dexie {
   lotes!: Table<LocalLote, number>;
   dietas!: Table<LocalDieta, number>;
+  animais!: Table<LocalAnimal, number>;
   tratos_offline!: Table<LocalTrato, number>;
   pesagens_offline!: Table<LocalPesagem, number>;
 
   constructor() {
     super('GMDTechLocalDB');
-    this.version(1).stores({
+    this.version(2).stores({
       lotes: 'id, nome_lote, status',
       dietas: 'id, nome_dieta',
+      animais: 'id, lote_id, brinco, status',
       tratos_offline: '++id, lote_id, sync_status',
-      pesagens_offline: '++id, lote_id, sync_status'
+      pesagens_offline: '++id, animal_id, sync_status'
     });
   }
 }

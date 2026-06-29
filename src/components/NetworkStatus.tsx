@@ -144,6 +144,9 @@ export default function NetworkStatus() {
 
         await db.dietas.clear();
         await db.dietas.bulkPut(dataDietas.dietas || []);
+
+        await db.animais.clear();
+        await db.animais.bulkPut(dataDietas.animais || []);
       }
     } catch (e) {
       console.error('Erro ao buscar dados para cache offline:', e);

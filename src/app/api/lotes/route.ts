@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
 
-// POST: Criar um novo lote e registrar a pesagem inicial de entrada
+// POST: Criar um novo lote, gerar animais individuais de forma sequencial e suas pesagens iniciais
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -50,19 +50,32 @@ export async function POST(request: Request) {
     `;
 
     const novoLoteId = insertLoteResult[0].id;
-
-    // 2. Inserir automaticamente a pesagem de entrada na tabela 'pesagens'
-    // O peso médio inicial do animal = peso total / cabeças
     const pesoMedioInicial = pesoTotal / cabecas;
 
-    await sql`
-      INSERT INTO pesagens (lote_id, data_pesagem, peso_medio_animal)
-      VALUES (${novoLoteId}, CURRENT_TIMESTAMP, ${pesoMedioInicial})
-    `;
+    // 2. Gerar individualmente as cabeças de gado na tabela 'animais' e suas pesagens iniciais
+    for (let i = 1; i <= cabecas; i++) {
+      // Padroniza a string de identificação do brinco, ex: "LOTE B3-001"
+      const brincoTag = `${nome_lote.toUpperCase().replace(/[^A-Z0-9]/g, '')}-${String(i).padStart(3, '0')}`;
+
+      // Inserir animal
+      const insertAnimalResult = await sql`
+        INSERT INTO animais (lote_id, brinco, peso_entrada, status, data_entrada)
+        VALUES (${novoLoteId}, ${brincoTag}, ${pesoMedioInicial}, 'ativo', CURRENT_DATE)
+        RETURNING id
+      `;
+      
+      const animalId = insertAnimalResult[0].id;
+
+      // Inserir pesagem inicial vinculada à cabeça individual
+      await sql`
+        INSERT INTO pesagens (animal_id, data_pesagem, peso)
+        VALUES (${animalId}, CURRENT_TIMESTAMP, ${pesoMedioInicial})
+      `;
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Lote criado com sucesso e pesagem inicial registrada!',
+      message: 'Lote e cabeças individuais criados com sucesso!',
       lote_id: novoLoteId
     }, { status: 201 });
 
@@ -84,7 +97,7 @@ export async function DELETE(request: Request) {
 
     const loteId = parseInt(id);
 
-    // O cascade delete configurado no PostgreSQL cuidará de excluir os tratos e pesagens
+    // O cascade delete configurado no PostgreSQL cuidará de excluir os animais, tratos e pesagens
     await sql`
       DELETE FROM lotes 
       WHERE id = ${loteId}
@@ -100,4 +113,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Erro ao excluir lote no Neon DB', details: error.message }, { status: 500 });
   }
 }
-

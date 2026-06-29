@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
 
-// GET: Retornar todas as dietas e estoques para sincronização/exibição
+// GET: Retornar todas as dietas e estoques + lista de animais ativos para sincronização/exibição
 export async function GET() {
   try {
     const dietas = await sql`
@@ -9,10 +9,16 @@ export async function GET() {
       FROM dietas 
       ORDER BY nome_dieta ASC
     `;
-    return NextResponse.json({ dietas }, { status: 200 });
+    const animais = await sql`
+      SELECT id, lote_id, brinco, peso_entrada, status 
+      FROM animais 
+      WHERE status = 'ativo'
+      ORDER BY brinco ASC
+    `;
+    return NextResponse.json({ dietas, animais }, { status: 200 });
   } catch (error: any) {
-    console.error('Erro ao buscar dietas:', error);
-    return NextResponse.json({ error: 'Erro ao buscar dietas no Neon DB', details: error.message }, { status: 500 });
+    console.error('Erro ao buscar dietas e animais:', error);
+    return NextResponse.json({ error: 'Erro ao buscar dados no Neon DB', details: error.message }, { status: 500 });
   }
 }
 

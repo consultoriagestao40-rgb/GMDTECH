@@ -6,12 +6,12 @@ export async function GET(request: Request) {
   const loteIdParam = searchParams.get('lote_id');
 
   try {
-    // 1. Caso queira buscar o histórico detalhado de um lote específico (para o gráfico)
+    // 1. Caso de pesquisa detalhada de um lote específico (para o gráfico e tabela de animais)
     if (loteIdParam) {
       const loteId = parseInt(loteIdParam);
       
       const loteResult = await sql`
-        SELECT id, data_entrada, peso_total_entrada, qtd_cabecas 
+        SELECT id, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto
         FROM lotes 
         WHERE id = ${loteId}
       `;
@@ -21,108 +21,186 @@ export async function GET(request: Request) {
       }
 
       const lote = loteResult[0];
-      const pesoMedioEntrada = parseFloat(lote.peso_total_entrada) / lote.qtd_cabecas;
       const dataEntrada = new Date(lote.data_entrada);
 
-      // Buscar histórico de pesagens
-      const pesagensResult = await sql`
-        SELECT data_pesagem, peso_medio_animal 
-        FROM pesagens 
-        WHERE lote_id = ${loteId} 
-        ORDER BY data_pesagem ASC
+      // Buscar animais individuais deste lote
+      const animaisResult = await sql`
+        SELECT a.id, a.brinco, a.peso_entrada, a.status, a.data_entrada, a.data_saida, a.peso_saida, a.preco_venda_arroba, a.rendimento_carcaca_real,
+               COALESCE(
+                 (SELECT p.peso FROM pesagens p WHERE p.animal_id = a.id ORDER BY p.data_pesagem DESC LIMIT 1),
+                 a.peso_entrada
+               ) as peso_atual,
+               (SELECT MAX(p.data_pesagem) FROM pesagens p WHERE p.animal_id = a.id) as data_ultima_pesagem
+        FROM animais a
+        WHERE a.lote_id = ${loteId}
+        ORDER BY a.status ASC, a.brinco ASC
       `;
 
-      // Calcular o GMD para cada pesagem ao longo do tempo
-      const historico = pesagensResult.map((pesagem: any) => {
-        const dataPesagem = new Date(pesagem.data_pesagem);
-        const diffTime = Math.abs(dataPesagem.getTime() - dataEntrada.getTime());
+      // Calcular o GMD individual de cada animal
+      const animais = animaisResult.map((animal: any) => {
+        const dEntrada = new Date(animal.data_entrada);
+        const dFim = animal.data_saida ? new Date(animal.data_saida) : new Date();
+        const diffTime = Math.abs(dFim.getTime() - dEntrada.getTime());
         const dias = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-        const pesoMedio = parseFloat(pesagem.peso_medio_animal);
         
-        // GMD = (Peso Atual - Peso Entrada) / Dias no Confinamento
-        const gmd = (pesoMedio - pesoMedioEntrada) / dias;
+        const pEntrada = parseFloat(animal.peso_entrada);
+        const pAtual = parseFloat(animal.peso_atual);
+        const gmd = (pAtual - pEntrada) / dias;
 
         return {
-          data: dataPesagem.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          id: animal.id,
+          brinco: animal.brinco,
+          peso_entrada: pEntrada,
+          peso_atual: pAtual,
+          status: animal.status,
+          data_entrada: animal.data_entrada,
+          data_saida: animal.data_saida,
+          peso_saida: animal.peso_saida ? parseFloat(animal.peso_saida) : null,
+          preco_venda_arroba: animal.preco_venda_arroba ? parseFloat(animal.preco_venda_arroba) : null,
+          rendimento_carcaca_real: animal.rendimento_carcaca_real ? parseFloat(animal.rendimento_carcaca_real) : null,
+          dias_confinamento: dias,
+          gmd: Math.max(0, gmd)
+        };
+      });
+
+      // Buscar histórico de pesagens médias diárias do lote para desenhar o gráfico
+      const pesagensResult = await sql`
+        SELECT DATE(p.data_pesagem) as data_grupo, AVG(p.peso) as peso_medio
+        FROM pesagens p
+        JOIN animais a ON p.animal_id = a.id
+        WHERE a.lote_id = ${loteId}
+        GROUP BY DATE(p.data_pesagem)
+        ORDER BY data_grupo ASC
+      `;
+
+      const pesoMedioEntradaLote = parseFloat(lote.peso_total_entrada) / lote.qtd_cabecas;
+
+      const historico = pesagensResult.map((p: any) => {
+        const dataGrupo = new Date(p.data_grupo);
+        const diffTime = Math.abs(dataGrupo.getTime() - dataEntrada.getTime());
+        const dias = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        const pesoMedio = parseFloat(p.peso_medio);
+        
+        // GMD médio do lote nessa data
+        const gmd = (pesoMedio - pesoMedioEntradaLote) / dias;
+
+        return {
+          data: dataGrupo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
           peso: pesoMedio,
           gmd: Math.max(0, gmd)
         };
       });
 
-      return NextResponse.json({ historico }, { status: 200 });
+      return NextResponse.json({ lote, animais, historico }, { status: 200 });
     }
 
-    // 2. Retornar dados agregados de todos os lotes ativos para a visualização dos cards do Dashboard
+    // 2. Retornar dados agregados de todos os lotes para o Dashboard
     const lotesDb = await sql`
-      SELECT 
-        l.id, 
-        l.nome_lote, 
-        l.qtd_cabecas, 
-        l.data_entrada, 
-        l.data_saida,
-        l.peso_total_entrada, 
-        l.custo_aquisicao_total, 
-        l.status,
-        l.rendimento_carcaca_previsto
-      FROM lotes l
-      ORDER BY l.status ASC, l.data_entrada DESC
+      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto
+      FROM lotes 
+      ORDER BY status ASC, data_entrada DESC
     `;
 
     const stats = await Promise.all(lotesDb.map(async (lote: any) => {
       const loteId = lote.id;
-      const qtdCabecas = lote.qtd_cabecas;
       const dataEntrada = new Date(lote.data_entrada);
       const dataFim = lote.data_saida ? new Date(lote.data_saida) : new Date();
 
-      // Calcular dias de confinamento
       const diffTime = Math.abs(dataFim.getTime() - dataEntrada.getTime());
       const diasConfinamento = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-      const pesoTotalEntrada = parseFloat(lote.peso_total_entrada);
-      const pesoMedioEntrada = pesoTotalEntrada / qtdCabecas;
-
-      // Buscar custo total de tratos para este lote
-      const tratosSumResult = await sql`
+      const totalTratosRes = await sql`
         SELECT COALESCE(SUM(custo_total_trato), 0) as total_trato 
         FROM tratos 
         WHERE lote_id = ${loteId}
       `;
-      const custoTratosTotal = parseFloat(tratosSumResult[0].total_trato);
+      const custoTratosTotal = parseFloat(totalTratosRes[0].total_trato);
 
-      // Buscar peso médio atual (última pesagem)
-      const ultimaPesagemResult = await sql`
-        SELECT peso_medio_animal 
-        FROM pesagens 
-        WHERE lote_id = ${loteId} 
-        ORDER BY data_pesagem DESC 
-        LIMIT 1
+      // Quantidade de animais ativos e vendidos
+      const countRes = await sql`
+        SELECT 
+          COUNT(*) FILTER (WHERE status = 'ativo') as ativas,
+          COUNT(*) FILTER (WHERE status = 'vendido') as vendidas
+        FROM animais 
+        WHERE lote_id = ${loteId}
+      `;
+      const cabecasAtivas = parseInt(countRes[0].ativas || '0');
+      const cabecasVendidas = parseInt(countRes[0].vendidas || '0');
+      const totalCabecas = cabecasAtivas + cabecasVendidas;
+
+      // Calcular Peso Médio Inicial do lote
+      const pesoTotalEntrada = parseFloat(lote.peso_total_entrada);
+      const pesoMedioEntrada = totalCabecas > 0 ? pesoTotalEntrada / totalCabecas : 0;
+
+      // Buscar pesos atuais dos animais ativos
+      const pesosAtivosRes = await sql`
+        SELECT a.id, a.peso_entrada,
+               COALESCE(
+                 (SELECT p.peso FROM pesagens p WHERE p.animal_id = a.id ORDER BY p.data_pesagem DESC LIMIT 1),
+                 a.peso_entrada
+               ) as peso_atual
+        FROM animais a
+        WHERE a.lote_id = ${loteId} AND a.status = 'ativo'
       `;
 
-      const pesoMedioAtual = ultimaPesagemResult.length > 0 
-        ? parseFloat(ultimaPesagemResult[0].peso_medio_animal)
-        : pesoMedioEntrada;
+      // Peso médio atual do lote (animais ativos). Se todos foram vendidos, calcula a média de peso_saida dos vendidos
+      let pesoMedioAtual = 0;
+      if (cabecasAtivas > 0) {
+        const somaPesosAtivos = pesosAtivosRes.reduce((acc: number, cur: any) => acc + parseFloat(cur.peso_atual), 0);
+        pesoMedioAtual = somaPesosAtivos / cabecasAtivas;
+      } else {
+        const pesosSaidaRes = await sql`
+          SELECT COALESCE(AVG(peso_saida), 0) as avg_saida 
+          FROM animais 
+          WHERE lote_id = ${loteId} AND status = 'vendido'
+        `;
+        pesoMedioAtual = parseFloat(pesosSaidaRes[0].avg_saida) || pesoMedioEntrada;
+      }
 
-      // Calcular GMD do Lote
+      // Calcular GMD Médio do Lote
       const gmdLote = (pesoMedioAtual - pesoMedioEntrada) / diasConfinamento;
 
-      // Cálculo de Arrobas (@) Produzidas
-      // Formula: (@ Produzida por animal) = (Peso Atual - Peso Entrada) * Rendimento Carcaça (%) / 15
-      // Total Produzido = @ Produzida por animal * Quantidade de Cabeças
-      const rendimento = parseFloat(lote.rendimento_carcaca_previsto) / 100;
+      // Calcular Arrobas (@) Produzidas detalhadas
+      // @ Produzida = SUM((peso_atual_ou_saida - peso_entrada) * rendimento / 15)
+      const rendimentoPrevisto = parseFloat(lote.rendimento_carcaca_previsto) / 100;
       
-      const arrobasEntradaTotal = (pesoTotalEntrada * rendimento) / 15;
-      const arrobasAtualTotal = ((pesoMedioAtual * qtdCabecas) * rendimento) / 15;
-      const arrobasProduzidasTotal = Math.max(0.1, arrobasAtualTotal - arrobasEntradaTotal);
+      const animaisGmdRes = await sql`
+        SELECT status, peso_entrada, peso_saida, rendimento_carcaca_real,
+               COALESCE(
+                 (SELECT p.peso FROM pesagens p WHERE p.animal_id = a.id ORDER BY p.data_pesagem DESC LIMIT 1),
+                 a.peso_entrada
+               ) as peso_atual
+        FROM animais a
+        WHERE a.lote_id = ${loteId}
+      `;
+
+      let arrobasProduzidasTotal = 0;
+      animaisGmdRes.forEach((animal: any) => {
+        const pEntrada = parseFloat(animal.peso_entrada);
+        if (animal.status === 'ativo') {
+          const pAtual = parseFloat(animal.peso_atual);
+          const ganho = pAtual - pEntrada;
+          arrobasProduzidasTotal += (ganho * rendimentoPrevisto) / 15;
+        } else {
+          const pSaida = parseFloat(animal.peso_saida || pEntrada);
+          const ganho = pSaida - pEntrada;
+          const rendReal = animal.rendimento_carcaca_real ? parseFloat(animal.rendimento_carcaca_real) / 100 : rendimentoPrevisto;
+          arrobasProduzidasTotal += (ganho * rendReal) / 15;
+        }
+      });
+
+      arrobasProduzidasTotal = Math.max(0.1, arrobasProduzidasTotal);
 
       // Custo Alimentar por @ Produzida
       const custoPorArrobaProduzida = custoTratosTotal / arrobasProduzidasTotal;
-
       const custoAquisicao = parseFloat(lote.custo_aquisicao_total);
 
       return {
         id: loteId,
         nome_lote: lote.nome_lote,
-        qtd_cabecas: qtdCabecas,
+        qtd_cabecas: cabecasAtivas, // Mostrar apenas as cabeças que continuam ativas no painel
+        cabecas_totais: totalCabecas,
+        cabecas_vendidas: cabecasVendidas,
         data_entrada: lote.data_entrada,
         dias_confinamento: diasConfinamento,
         peso_medio_entrada: Math.round(pesoMedioEntrada),
