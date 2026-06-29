@@ -510,6 +510,73 @@ export default function Dashboard() {
       maxPeso - 15
     ];
 
+    // Manipular o movimento do mouse sobre todo o SVG do gráfico para traçar a guia de região
+    const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
+      const svgElement = e.currentTarget;
+      const rect = svgElement.getBoundingClientRect();
+      const clickX = e.clientX - rect.left; // Posição X do mouse relativa ao SVG
+      const scaleX = width / rect.width;
+      const svgX = clickX * scaleX; // Posição X convertida para a escala original do SVG (500)
+
+      // Determinar o dia correspondente com base no X
+      const dias = Math.round(((svgX - paddingLeft) / (width - paddingLeft - paddingRight)) * ciclo_dias);
+      if (dias < 0 || dias > ciclo_dias) {
+        setHoveredPoint(null);
+        return;
+      }
+
+      // Encontrar a data correspondente
+      let label = `Dia ${dias}`;
+      if (dias === 0) {
+        label = 'Entrada';
+      } else {
+        // Encontrar ponto real mais próximo do dia selecionado
+        const maisProximo = realPoints.reduce((prev, curr) => {
+          return Math.abs(curr.dias - dias) < Math.abs(prev.dias - dias) ? curr : prev;
+        });
+        if (Math.abs(maisProximo.dias - dias) <= 5) {
+          label = maisProximo.label;
+        }
+      }
+
+      // Calcular peso previsto para este dia
+      const pesoPrevisto = pesoIni + gmdDiario * dias;
+
+      // Calcular peso real baseado na interpolação linear dos pontos de pesagem reais
+      let pesoReal = null;
+      
+      // Ordenar os pontos para garantir a ordem cronológica
+      const sortedReal = [...realPoints].sort((a, b) => a.dias - b.dias);
+      
+      if (sortedReal.length > 0) {
+        if (dias <= sortedReal[0].dias) {
+          pesoReal = sortedReal[0].peso;
+        } else if (dias >= sortedReal[sortedReal.length - 1].dias) {
+          pesoReal = sortedReal[sortedReal.length - 1].peso;
+        } else {
+          // Interpolar entre dois pontos consecutivos
+          for (let i = 0; i < sortedReal.length - 1; i++) {
+            const p1 = sortedReal[i];
+            const p2 = sortedReal[i + 1];
+            if (dias >= p1.dias && dias <= p2.dias) {
+              const t = (dias - p1.dias) / (p2.dias - p1.dias);
+              pesoReal = p1.peso + t * (p2.peso - p1.peso);
+              break;
+            }
+          }
+        }
+      }
+
+      setHoveredPoint({
+        x: getX(dias),
+        y: getY(pesoReal || pesoPrevisto),
+        dias: dias,
+        label: label,
+        pesoReal: pesoReal || pesoPrevisto,
+        pesoPrevisto: pesoPrevisto
+      });
+    };
+
     return (
       <div style={styles.chartWrapper}>
         <div style={{ display: 'flex', gap: '1.25rem', justifyContent: 'center', marginBottom: '0.75rem', fontSize: '0.78rem' }}>
@@ -523,7 +590,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto' }}>
+        <svg 
+          viewBox={`0 0 ${width} ${height}`} 
+          style={{ width: '100%', height: 'auto', overflow: 'visible' }}
+          onMouseMove={handleSvgMouseMove}
+          onMouseLeave={() => setHoveredPoint(null)}
+        >
           <defs>
             <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-brand)" stopOpacity="0.3"/>
@@ -565,48 +637,56 @@ export default function Dashboard() {
             <path d={realLinePath} fill="none" stroke="var(--color-brand)" strokeWidth="2.5" strokeLinecap="round" />
           ) : null}
 
-          {realPointsCoords.map((p, idx) => {
-            const pesoPrevisto = pesoIni + gmdDiario * p.dias;
-            return (
-              <g key={idx}>
-                <circle cx={p.x} cy={p.y} r="3.5" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
-                <text 
-                  x={p.dias === 0 ? p.x + 8 : p.x} 
-                  y={p.dias === 0 ? p.y + 3 : p.y - 7} 
-                  fill="#fff" 
-                  fontSize="8" 
-                  fontWeight="600" 
-                  textAnchor={p.dias === 0 ? "start" : "middle"}
-                >
-                  {Math.round(p.peso).toLocaleString('pt-BR')} kg
+          {/* Desenhar os pontos reais fixos de pesagem */}
+          {realPointsCoords.map((p, idx) => (
+            <g key={idx}>
+              <circle cx={p.x} cy={p.y} r="3.5" fill="var(--bg-secondary)" stroke="var(--color-brand)" strokeWidth="2" />
+              <text 
+                x={p.dias === 0 ? p.x + 8 : p.x} 
+                y={p.dias === 0 ? p.y + 3 : p.y - 7} 
+                fill="#fff" 
+                fontSize="8" 
+                fontWeight="600" 
+                textAnchor={p.dias === 0 ? "start" : "middle"}
+              >
+                {Math.round(p.peso).toLocaleString('pt-BR')} kg
+              </text>
+              {p.dias > 0 && (
+                <text x={p.x} y={height - paddingBottom + 20} fill="var(--text-muted)" fontSize="7" textAnchor="middle">
+                  ({p.label})
                 </text>
-                {p.dias > 0 && (
-                  <text x={p.x} y={height - paddingBottom + 20} fill="var(--text-muted)" fontSize="7" textAnchor="middle">
-                    ({p.label})
-                  </text>
-                )}
+              )}
+            </g>
+          ))}
 
-                {/* Área invisível maior para facilitar o hover com o mouse */}
-                <circle 
-                  cx={p.x} 
-                  cy={p.y} 
-                  r="16" 
-                  fill="rgba(0,0,0,0)" 
-                  pointerEvents="all"
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => setHoveredPoint({
-                    x: p.x,
-                    y: p.y,
-                    dias: p.dias,
-                    label: p.dias === 0 ? 'Entrada' : p.label,
-                    pesoReal: p.peso,
-                    pesoPrevisto: pesoPrevisto
-                  })}
-                  onMouseLeave={() => setHoveredPoint(null)}
-                />
-              </g>
-            );
-          })}
+          {/* Linha guia vertical e marcador dinâmico que seguem o cursor */}
+          {hoveredPoint && (
+            <g>
+              <line 
+                x1={hoveredPoint.x} 
+                y1={paddingTop} 
+                x2={hoveredPoint.x} 
+                y2={height - paddingBottom} 
+                stroke="rgba(255,255,255,0.2)" 
+                strokeDasharray="2 2"
+                pointerEvents="none"
+              />
+              <circle 
+                cx={hoveredPoint.x} 
+                cy={getY(hoveredPoint.pesoPrevisto)} 
+                r="4.5" 
+                fill="var(--color-accent)" 
+                pointerEvents="none"
+              />
+              <circle 
+                cx={hoveredPoint.x} 
+                cy={getY(hoveredPoint.pesoReal)} 
+                r="4.5" 
+                fill="var(--color-brand)" 
+                pointerEvents="none"
+              />
+            </g>
+          )}
         </svg>
 
         {/* Card do Tooltip Flutuante */}
@@ -614,8 +694,8 @@ export default function Dashboard() {
           <div style={{
             position: 'absolute',
             left: `${(hoveredPoint.x / width) * 100}%`,
-            top: `${(hoveredPoint.y / height) * 100 - 15}%`,
-            transform: 'translate(-50%, -100%)',
+            top: `10%`,
+            transform: 'translateX(-50%)',
             backgroundColor: 'rgba(23, 23, 37, 0.95)',
             border: '1px solid rgba(255, 255, 255, 0.12)',
             borderRadius: '6px',
@@ -628,7 +708,7 @@ export default function Dashboard() {
             transition: 'opacity var(--transition-fast)'
           }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '2px', fontWeight: 600 }}>
-              Dia {hoveredPoint.dias} ({hoveredPoint.label})
+              {hoveredPoint.dias === 0 ? 'Entrada' : `Dia ${hoveredPoint.dias}`} ({hoveredPoint.label})
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '0.8rem', margin: '2px 0' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Previsto:</span>
