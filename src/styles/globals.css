@@ -154,24 +154,62 @@ button, input, select, textarea {
   margin: 0 auto;
 }
 
+/* Cabeçalho mobile superior */
+.mobile-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: none !important; /* Escondido no desktop */
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1.25rem;
+  z-index: 99;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(19, 27, 38, 0.92) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Sidebar default */
+.sidebar-container {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 0;
+  z-index: 100;
+  border-right: 1px solid var(--border-color);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(0); /* Sempre visível no desktop */
+}
+
 /* Regras Responsivas para Mobile (até 768px de largura) */
 @media (max-width: 768px) {
-  /* Forçar a exibição do cabeçalho mobile */
-  div[class*="mobileHeader"] {
-    display: flex !important;
+  .mobile-header {
+    display: flex !important; /* Exibe no mobile */
   }
-  
-  /* Ajustar o container de conteúdo para mobile */
+
+  .sidebar-container {
+    transform: translateX(-100%); /* Esconde fora da tela no mobile */
+    width: 260px !important;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.6);
+    border-radius: 0 16px 16px 0 !important;
+  }
+
+  .sidebar-container.open {
+    transform: translateX(0); /* Desliza para dentro quando ativo */
+  }
+
   .layout-content {
-    margin-left: 0;
-    padding: 1rem;
-    padding-top: 80px; /* espaço para não cortar atrás da barra mobile de 60px */
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    padding-top: 80px !important; /* Espaço para a barra mobile */
     min-height: calc(100vh - 60px);
-  }
-  
-  /* No celular, esconder o menu lateral fixo para deslizar na animação */
-  aside {
-    width: 280px !important;
   }
 }
 

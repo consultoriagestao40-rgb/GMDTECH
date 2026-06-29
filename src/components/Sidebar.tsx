@@ -24,12 +24,12 @@ export default function Sidebar() {
   return (
     <>
       {/* HEADER MOBILE (Barra superior que só aparece em telas menores) */}
-      <div style={styles.mobileHeader} className="glass-panel">
-        <button onClick={toggleSidebar} style={styles.menuBtn}>
+      <div className="mobile-header">
+        <button onClick={toggleSidebar} style={styles.menuBtn} aria-label="Menu">
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        <Link href="/" style={styles.logo}>
+        <Link href="/" style={styles.logo} onClick={() => setIsOpen(false)}>
           <span style={{ marginRight: '6px', fontSize: '1.25rem' }}>🐂</span>
           <strong style={{ color: '#fff' }}>GMD</strong>
           <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>Tech</span>
@@ -45,15 +45,7 @@ export default function Sidebar() {
       )}
 
       {/* MENU LATERAL COMPLETO (Desktop fixo / Mobile deslizante) */}
-      <aside 
-        style={{
-          ...styles.sidebar,
-          transform: typeof window !== 'undefined' && window.innerWidth <= 768 
-            ? (isOpen ? 'translateX(0)' : 'translateX(-100%)') 
-            : 'none'
-        }}
-        className="glass-panel"
-      >
+      <aside className={`sidebar-container glass-panel ${isOpen ? 'open' : ''}`}>
         {/* Logo Desktop */}
         <div style={styles.logoWrapper}>
           <Link href="/" style={styles.logoDesktop}>
