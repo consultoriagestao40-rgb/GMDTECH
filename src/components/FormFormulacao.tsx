@@ -504,7 +504,7 @@ export default function FormFormulacao() {
                   <th style={styles.th}>Custo / Saco (40kg)</th>
                   <th style={styles.th}>Estoque</th>
                   <th style={styles.th}>Resumo da Receita</th>
-                  <th style={styles.th} style={{ textAlign: 'center' }}>Ações</th>
+                  <th style={{ ...styles.th, textAlign: 'center' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
