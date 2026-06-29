@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calculator, Plus, Trash2, Save, CheckCircle, AlertTriangle, Scale, DollarSign, RefreshCw } from 'lucide-react';
+import { Calculator, Plus, Trash2, Save, CheckCircle, AlertTriangle, Scale, DollarSign } from 'lucide-react';
 
 interface Ingrediente {
   id: string;
@@ -154,6 +154,33 @@ export default function FormFormulacao() {
     await submitFormula('PUT');
   };
 
+  // Excluir formulação do banco (DELETE)
+  const handleDeleteDiet = async (id: number) => {
+    const confirmDelete = window.confirm("Deseja realmente excluir esta ração formulada permanentemente? Essa ação não poderá ser desfeita.");
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/dietas?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro ao excluir formulação.');
+      }
+
+      setStatusMessage({ type: 'success', text: 'Formulação excluída com sucesso!' });
+      loadSavedDietas();
+      
+      if (selectedDietId === String(id)) {
+        handleResetToNew();
+      }
+
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Erro ao deletar ração.' });
+    }
+  };
+
   const submitFormula = async (method: 'POST' | 'PUT') => {
     if (totalPorcentagem !== 100) {
       setStatusMessage({
@@ -201,12 +228,13 @@ export default function FormFormulacao() {
           : `Ração "${nomeRacao}" atualizada com sucesso!`
       });
 
-      // Recarregar lista e ir para trato
+      // Recarregar lista
       loadSavedDietas();
-      setTimeout(() => {
-        router.push('/trato');
-        router.refresh();
-      }, 1500);
+      if (method === 'POST') {
+        setNomeRacao('Nova Ração Formulada');
+        setEstoqueInicial('5000');
+        setIngredientes(defaultIngredients);
+      }
 
     } catch (err: any) {
       setStatusMessage({
@@ -453,24 +481,119 @@ export default function FormFormulacao() {
             )}
           </form>
         </div>
-
-        {/* Mensagens de feedback */}
-        {statusMessage && (
-          <div style={{
-            ...styles.statusMessage,
-            backgroundColor: statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            borderColor: statusMessage.type === 'success' ? 'var(--color-brand)' : 'var(--color-danger)',
-            color: statusMessage.type === 'success' ? 'var(--color-brand)' : 'var(--color-danger)'
-          }}>
-            {statusMessage.type === 'success' ? (
-              <CheckCircle size={18} style={{ marginRight: '8px', flexShrink: 0 }} />
-            ) : (
-              <AlertTriangle size={18} style={{ marginRight: '8px', flexShrink: 0 }} />
-            )}
-            <span>{statusMessage.text}</span>
-          </div>
-        )}
       </div>
+
+      {/* Tabela Inferior: Rações Cadastradas */}
+      <div className="glass-panel" style={styles.tablePanel}>
+        <div style={styles.cardHeader}>
+          <Scale size={22} color="var(--color-accent)" style={{ marginRight: '8px' }} />
+          <h2 style={styles.cardTitle}>Rações Formuladas Cadastradas</h2>
+        </div>
+
+        <div style={styles.tableContainer}>
+          {savedDietas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+              Nenhuma ração cadastrada até o momento. Use o simulador ao lado para criar a primeira!
+            </div>
+          ) : (
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.trHeader}>
+                  <th style={styles.th}>Nome da Ração</th>
+                  <th style={styles.th}>Custo / kg</th>
+                  <th style={styles.th}>Custo / Saco (40kg)</th>
+                  <th style={styles.th}>Estoque</th>
+                  <th style={styles.th}>Resumo da Receita</th>
+                  <th style={styles.th} style={{ textAlign: 'center' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savedDietas.map((dieta) => {
+                  let ingredientesText = 'Mistura padrão (sem detalhamento)';
+                  if (dieta.formula_receita) {
+                    try {
+                      const parsed = typeof dieta.formula_receita === 'string'
+                        ? JSON.parse(dieta.formula_receita)
+                        : dieta.formula_receita;
+                      if (Array.isArray(parsed)) {
+                        ingredientesText = parsed.map(ing => `${ing.porcentagem}% ${ing.nome}`).join(', ');
+                      }
+                    } catch (e) {}
+                  }
+                  
+                  return (
+                    <tr key={dieta.id} style={styles.tr}>
+                      <td style={styles.td}>
+                        <strong style={{ color: '#fff' }}>{dieta.nome_dieta}</strong>
+                      </td>
+                      <td style={styles.td}>
+                        R$ {Number(dieta.custo_por_kg).toFixed(4)}
+                      </td>
+                      <td style={styles.td}>
+                        R$ {(Number(dieta.custo_por_kg) * 40).toFixed(2)}
+                      </td>
+                      <td style={styles.td}>
+                        {Number(dieta.estoque_kg).toLocaleString('pt-BR')} kg
+                      </td>
+                      <td style={{ ...styles.td, fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ingredientesText}>
+                        {ingredientesText}
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button 
+                            onClick={() => handleSelectDiet(String(dieta.id))}
+                            style={styles.actionBtnEdit}
+                            title="Carregar no simulador para ajustar"
+                          >
+                            Carregar / Editar
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteDiet(dieta.id)}
+                            style={styles.actionBtnDelete}
+                            title="Excluir ração permanentemente"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Mensagens de feedback flutuantes ou em bloco */}
+      {statusMessage && (
+        <div style={{
+          ...styles.statusMessage,
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 1000,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+          backgroundColor: statusMessage.type === 'success' ? '#10b981' : '#ef4444',
+          borderColor: 'transparent',
+          color: '#fff',
+          fontWeight: 600,
+          borderRadius: 'var(--radius-md)'
+        }}>
+          {statusMessage.type === 'success' ? (
+            <CheckCircle size={18} style={{ marginRight: '8px', flexShrink: 0 }} />
+          ) : (
+            <AlertTriangle size={18} style={{ marginRight: '8px', flexShrink: 0 }} />
+          )}
+          <span>{statusMessage.text}</span>
+          <button 
+            onClick={() => setStatusMessage(null)}
+            style={{ marginLeft: '12px', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -715,11 +838,70 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all var(--transition-fast)'
   },
   statusMessage: {
-    padding: '0.75rem',
+    padding: '0.75rem 1.25rem',
     borderRadius: 'var(--radius-sm)',
     border: '1px solid',
     display: 'flex',
     alignItems: 'center',
-    fontSize: '0.8rem'
+    fontSize: '0.85rem'
+  },
+  tablePanel: {
+    flex: '1 1 100%',
+    padding: '1.5rem',
+    borderRadius: 'var(--radius-md)',
+    marginTop: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem'
+  },
+  tableContainer: {
+    overflowX: 'auto',
+    width: '100%'
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    textAlign: 'left'
+  },
+  trHeader: {
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+  },
+  th: {
+    padding: '0.75rem 1rem',
+    color: 'var(--text-secondary)',
+    fontSize: '0.85rem',
+    fontWeight: 600
+  },
+  tr: {
+    borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+    transition: 'background var(--transition-fast)',
+    backgroundColor: 'transparent'
+  },
+  td: {
+    padding: '0.85rem 1rem',
+    fontSize: '0.9rem',
+    color: '#fff'
+  },
+  actionBtnEdit: {
+    padding: '0.4rem 0.75rem',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    border: '1px solid rgba(245, 158, 11, 0.2)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--color-accent)',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    transition: 'all var(--transition-fast)'
+  },
+  actionBtnDelete: {
+    padding: '0.4rem 0.75rem',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    border: '1px solid rgba(239, 68, 68, 0.2)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--color-danger)',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    transition: 'all var(--transition-fast)'
   }
 };

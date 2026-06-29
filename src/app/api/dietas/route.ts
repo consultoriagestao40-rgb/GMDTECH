@@ -79,3 +79,42 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Erro ao editar ração no Neon DB', details: error.message }, { status: 500 });
   }
 }
+
+// DELETE: Excluir uma ração/dieta formulada
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID da ração é obrigatório.' }, { status: 400 });
+    }
+
+    const dietaId = parseInt(id);
+
+    // Verificar se a ração está sendo usada em algum trato para evitar erro de chave estrangeira
+    const trs = await sql`
+      SELECT id FROM tratos WHERE dieta_id = ${dietaId} LIMIT 1
+    `;
+
+    if (trs.length > 0) {
+      return NextResponse.json({ 
+        error: 'Esta ração não pode ser excluída pois já foi utilizada em lançamentos de tratos de animais.' 
+      }, { status: 400 });
+    }
+
+    await sql`
+      DELETE FROM dietas WHERE id = ${dietaId}
+    `;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Ração excluída com sucesso!'
+    }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Erro ao excluir dieta:', error);
+    return NextResponse.json({ error: 'Erro ao excluir ração no Neon DB', details: error.message }, { status: 500 });
+  }
+}
+
