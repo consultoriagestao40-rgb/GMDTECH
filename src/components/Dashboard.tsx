@@ -701,6 +701,8 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Gráfico e Operações do Lote */}
+          <div style={styles.row}>
             {/* Gráfico */}
             <div className="glass-panel" style={styles.chartPanel}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
