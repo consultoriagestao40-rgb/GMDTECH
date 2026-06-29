@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut } from 'lucide-react';
+import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut, Users } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -15,7 +15,8 @@ export default function Sidebar() {
     { name: 'Lançar Trato', href: '/trato', icon: <Wheat size={18} /> },
     { name: 'Formulação Ração', href: '/formulacao', icon: <Calculator size={18} /> },
     { name: 'Premissas Trato', href: '/premissas', icon: <Sliders size={18} /> },
-    { name: 'Fluxo e Resultados', href: '/fluxo', icon: <TrendingUp size={18} /> }
+    { name: 'Fluxo e Resultados', href: '/fluxo', icon: <TrendingUp size={18} /> },
+    { name: 'Usuários', href: '/usuarios', icon: <Users size={18} /> }
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -86,36 +87,35 @@ export default function Sidebar() {
               </Link>
             );
           })}
+        </nav>
 
-          {/* Botão de Logout */}
+        {/* Footer do Menu - Substituído pelo Botão de Sair */}
+        <div style={styles.footer}>
           <button
             onClick={() => {
               localStorage.removeItem('gmdtech_user');
               window.location.reload();
             }}
             style={{
-              ...styles.navLink,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
               width: '100%',
-              background: 'transparent',
-              border: 'none',
-              borderLeft: '3px solid transparent',
-              textAlign: 'left',
+              padding: '0.65rem',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.15)',
+              color: 'var(--color-danger)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
               cursor: 'pointer',
-              marginTop: '1rem',
-              color: 'var(--color-danger)'
+              transition: 'all var(--transition-fast)'
             }}
           >
-            <span style={{ marginRight: '10px', display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
-              <LogOut size={18} />
-            </span>
+            <LogOut size={16} />
             Sair da Conta
           </button>
-        </nav>
-
-        {/* Footer do Menu */}
-        <div style={styles.footer}>
-          <span style={styles.version}>GMDTech v1.0.0</span>
-          <span style={styles.status}>Neon PostgreSQL Ativo</span>
         </div>
       </aside>
     </>
