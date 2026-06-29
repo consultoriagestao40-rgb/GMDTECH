@@ -254,6 +254,60 @@ export default function FluxoPage() {
     };
   };
 
+  // Obter pontos para a curva de caixa acumulado do gráfico horizontal
+  const getChartPoints = () => {
+    if (!activeLote || !proj) return [];
+    
+    const baseDate = activeLote.data_entrada;
+    
+    // Função auxiliar para formatar Mês/Ano
+    const getMonthYearLabel = (baseDateStr: string, daysToAdd: number) => {
+      const d = new Date(baseDateStr);
+      d.setDate(d.getDate() + daysToAdd);
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      return `${months[d.getMonth()]}/${String(d.getFullYear()).slice(-2)}`;
+    };
+
+    const points = [];
+
+    // Ponto 0: R$ 0 (antes de comprar o gado) - 30 dias antes
+    points.push({
+      label: getMonthYearLabel(baseDate, -30),
+      val: 0,
+      description: 'PONTO DE EQUILÍBRIO (ZERO)'
+    });
+
+    // Ponto 1: Dia 0 - Compra do gado (- custo aquisição)
+    points.push({
+      label: getMonthYearLabel(baseDate, 0),
+      val: -proj.fluxoMensal[0].saídas,
+      description: 'Compra do Gado'
+    });
+
+    // Pontos intermediários: Custos mensais de alimentação acumulados
+    let acumulado = -proj.fluxoMensal[0].saídas;
+    
+    // Iterar sobre os meses de trato (excluindo Mês 0 e o último que é faturamento da venda)
+    for (let i = 1; i < proj.fluxoMensal.length - 1; i++) {
+      const item = proj.fluxoMensal[i];
+      acumulado -= item.saídas;
+      points.push({
+        label: getMonthYearLabel(baseDate, item.mes * 30),
+        val: acumulado,
+        description: `Mês ${item.mes}`
+      });
+    }
+
+    // Ponto Final: Venda (Saldo final de lucro planejado)
+    points.push({
+      label: getMonthYearLabel(baseDate, activeLote.ciclo_dias),
+      val: proj.lucroLiquidoProjetado,
+      description: 'Venda do Lote'
+    });
+
+    return points;
+  };
+
   // Calcular o realizado financeiro real
   const calculateRealResult = () => {
     if (!activeLote) return null;
@@ -262,7 +316,7 @@ export default function FluxoPage() {
     const custoAlimentarReal = activeLote.custo_tratos_total;
     const custoTotalReal = custoAquisicaoReal + custoAlimentarReal;
 
-    // Faturamento das vendas reais (animais com status 'vendido')
+    // Faturamento das vendas reais (apenas animais com status 'vendido' e peso_saida/preco_venda_arroba)
     const faturamentoRealVendas = animais.reduce((acc, a) => {
       if (a.status === 'vendido' && a.peso_saida && a.preco_venda_arroba) {
         const rend = (a.rendimento_carcaca_real || 54) / 100;
@@ -272,21 +326,9 @@ export default function FluxoPage() {
       return acc;
     }, 0);
 
-    // Se o lote ainda tiver animais ativos, podemos simular a "Valorização Atual"
-    // das cabeças restantes com base no preço de mercado digitado
-    const cabecasAtivas = animais.filter(a => a.status === 'ativo');
-    const precoArrobaMercado = parseFloat(precoVendaProjetado) || 300;
-    const rendCarcacaProjetado = (parseFloat(rendimentoCarcacaProjetado) || 54) / 100;
-    
-    const faturamentoProjetadoAtivos = cabecasAtivas.reduce((acc, a) => {
-      const pesoAtual = a.peso_atual || a.peso_entrada;
-      const arrobas = (pesoAtual * rendCarcacaProjetado) / 15;
-      return acc + (arrobas * precoArrobaMercado);
-    }, 0);
-
-    const faturamentoTotalRealEstimado = faturamentoRealVendas + faturamentoProjetadoAtivos;
+    const faturamentoTotalRealEstimado = faturamentoRealVendas;
     const lucroLiquidoRealEstimado = faturamentoTotalRealEstimado - custoTotalReal;
-    const roiRealEstimado = (lucroLiquidoRealEstimado / (custoTotalReal || 1)) * 100;
+    const roiRealEstimado = custoTotalReal > 0 ? (lucroLiquidoRealEstimado / custoTotalReal) * 100 : 0;
 
     return {
       custoAquisicaoReal,
@@ -552,6 +594,93 @@ export default function FluxoPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Gráfico da Curva de Caixa Acumulado */}
+          <div className="glass-panel" style={styles.panel}>
+            <h3 style={styles.panelTitle}>📊 CURVA DE CAIXA ACUMULADO & CAPITAL DE GIRO REQUERIDO</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', marginTop: '-0.75rem' }}>
+              Esta curva ilustra a evolução do saldo de caixa acumulado do lote. O ponto mais baixo representa o Capital de Giro máximo exigido pelo confinamento antes do faturamento final da venda.
+            </p>
+
+            <div style={{ width: '100%', overflowX: 'auto', backgroundColor: 'rgba(255,255,255,0.01)', borderRadius: '8px', padding: '1.5rem 0' }}>
+              <div style={{ minWidth: '750px', padding: '0 1.5rem' }}>
+                {(() => {
+                  const chartPoints = getChartPoints();
+                  if (chartPoints.length === 0) return null;
+                  
+                  const minVal = Math.min(...chartPoints.map(p => p.val));
+                  const maxVal = Math.max(...chartPoints.map(p => p.val));
+                  const valRange = maxVal - minVal || 1;
+
+                  const getX = (idx: number) => 60 + (idx / (chartPoints.length - 1)) * (800 - 120);
+                  const getY = (val: number) => 45 + (1 - (val - minVal) / valRange) * (200 - 90);
+                  const yZero = getY(0);
+                  
+                  const linePath = chartPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)} ${getY(p.val)}`).join(' ');
+
+                  return (
+                    <svg viewBox="0 0 800 200" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                      {/* Eixo horizontal Zero / Ponto de Equilíbrio */}
+                      <line x1={40} y1={yZero} x2={800 - 40} y2={yZero} stroke="rgba(255, 255, 255, 0.15)" strokeDasharray="3 3" />
+                      
+                      {/* Linha da Curva de Caixa */}
+                      <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      
+                      {/* Pontos e Valores */}
+                      {chartPoints.map((p, idx) => {
+                        const x = getX(idx);
+                        const y = getY(p.val);
+                        const isNegative = p.val < 0;
+                        const dotColor = isNegative ? 'var(--color-danger)' : 'var(--color-brand)';
+                        
+                        return (
+                          <g key={idx}>
+                            {/* Marcador circular */}
+                            <circle cx={x} cy={y} r="5" fill={dotColor} stroke="#fff" strokeWidth="1.5" />
+                            
+                            {/* Valor em texto acima do ponto */}
+                            <text 
+                              x={x} 
+                              y={y - 12} 
+                              fill={isNegative ? 'var(--color-danger)' : 'var(--color-brand)'} 
+                              fontSize="9" 
+                              fontWeight="bold" 
+                              textAnchor="middle"
+                            >
+                              R$ {Math.round(p.val).toLocaleString('pt-BR')}
+                            </text>
+
+                            {/* Nome do Mês/Ano abaixo do gráfico */}
+                            <text 
+                              x={x} 
+                              y={200 - 10} 
+                              fill="var(--text-muted)" 
+                              fontSize="9" 
+                              textAnchor="middle"
+                            >
+                              {p.label}
+                            </text>
+                            
+                            {/* Descrição do ponto */}
+                            <text 
+                              x={x} 
+                              y={200 - 24} 
+                              fill="var(--text-secondary)" 
+                              fontSize="7.5" 
+                              fontWeight="600"
+                              textAnchor="middle"
+                            >
+                              {idx === 0 ? 'Equilíbrio' : p.description}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  );
+                })()}
+              </div>
             </div>
           </div>
         </>
