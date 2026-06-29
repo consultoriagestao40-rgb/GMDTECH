@@ -399,13 +399,20 @@ export default function Dashboard() {
     const ciclo_dias = activeLote.ciclo_dias || 90;
     const gmdEst = activeLote.gmd_estimado || 1.500;
 
-    // Configurar pontos iniciais e dados baseados no modo de exibição (Lote ou Individual)
+    // Configurar pontos iniciais e dados baseados no modo de exibição (Lote Médio, Lote Total ou Individual)
     let pesoIni = 300;
     let titleReal = 'Realizado';
     let realPointsRaw: PesagemHistorico[] = [];
+    let gmdDiario = gmdEst;
 
-    if (chartViewMode === 'lote') {
-      // MODO LOTE: Peso TOTAL do Lote
+    if (chartViewMode === 'lote_medio') {
+      // MODO LOTE MÉDIO: Peso Médio por Cabeça
+      pesoIni = activeLote.peso_medio_entrada || 300;
+      titleReal = 'Realizado (Média por Cabeça)';
+      realPointsRaw = [...historicoPesagens];
+      gmdDiario = gmdEst;
+    } else if (chartViewMode === 'lote_total') {
+      // MODO LOTE TOTAL: Peso TOTAL do Lote
       pesoIni = Number(activeLote.peso_total_entrada) || 14000;
       titleReal = 'Realizado (Peso Total do Lote)';
       // Multiplica os pesos médios históricos pela quantidade de cabeças ativas para obter o peso total do lote
@@ -413,6 +420,7 @@ export default function Dashboard() {
         ...p,
         peso: p.peso * activeLote.qtd_cabecas
       }));
+      gmdDiario = gmdEst * activeLote.qtd_cabecas;
     } else {
       // MODO INDIVIDUAL: Peso Individual de um Boi
       if (loadingAnimalChart) {
@@ -435,11 +443,10 @@ export default function Dashboard() {
       pesoIni = activeAnimal.peso_entrada;
       titleReal = `Realizado (Boi ${activeAnimal.brinco})`;
       realPointsRaw = [...animalHistoricoPesagens];
+      gmdDiario = gmdEst;
     }
 
     // Linha Teórica de Projeção (Meta)
-    // Para o lote: cresce gmdEst * activeLote.qtd_cabecas por dia. Para o boi: cresce gmdEst por dia.
-    const gmdDiario = chartViewMode === 'lote' ? (gmdEst * activeLote.qtd_cabecas) : gmdEst;
     const pesoProjetadoFim = pesoIni + gmdDiario * ciclo_dias;
 
     // Coletar pesos reais ordenados cronologicamente
