@@ -590,8 +590,9 @@ export default function Dashboard() {
                 <circle 
                   cx={p.x} 
                   cy={p.y} 
-                  r="12" 
-                  fill="transparent" 
+                  r="16" 
+                  fill="rgba(0,0,0,0)" 
+                  pointerEvents="all"
                   style={{ cursor: 'pointer' }}
                   onMouseEnter={() => setHoveredPoint({
                     x: p.x,
