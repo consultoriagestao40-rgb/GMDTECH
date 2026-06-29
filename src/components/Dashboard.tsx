@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DollarSign, TrendingUp, Award, Users, RefreshCw, BarChart2, Calendar, Target, AlertTriangle, PlusCircle, Scale } from 'lucide-react';
 
 interface LoteStats {
@@ -27,21 +28,13 @@ interface PesagemHistorico {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [lotes, setLotes] = useState<LoteStats[]>([]);
   const [selectedLoteId, setSelectedLoteId] = useState<number | null>(null);
   const [historicoPesagens, setHistoricoPesagens] = useState<PesagemHistorico[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [fechamentoInfo, setFechamentoInfo] = useState<any | null>(null);
   const [precoVendaInput, setPrecoVendaInput] = useState<string>('300.00'); // Valor médio do mercado R$/@ Nelore
-
-  // Estados para Lançamento de Novo Lote
-  const [showNovoLoteForm, setShowNovoLoteForm] = useState<boolean>(false);
-  const [novoLoteNome, setNovoLoteNome] = useState<string>('');
-  const [novoLoteCabecas, setNovoLoteCabecas] = useState<string>('');
-  const [novoLotePeso, setNovoLotePeso] = useState<string>('');
-  const [novoLoteCusto, setNovoLoteCusto] = useState<string>('');
-  const [novoLoteRendimento, setNovoLoteRendimento] = useState<string>('54.0');
-  const [submittingLote, setSubmittingLote] = useState<boolean>(false);
 
   // Estados para Lançamento de Nova Pesagem
   const [showNovaPesagemForm, setShowNovaPesagemForm] = useState<boolean>(false);
@@ -106,7 +99,6 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setFechamentoInfo(data);
-        // Atualizar lista
         loadDashboardData();
       }
     } catch (e) {
@@ -139,63 +131,6 @@ export default function Dashboard() {
     }
   };
 
-  // Submeter Novo Lote
-  const handleCreateLote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!novoLoteNome || !novoLoteCabecas || !novoLotePeso || !novoLoteCusto) {
-      setFormError('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-
-    setSubmittingLote(true);
-    setFormError(null);
-    setFormSuccess(null);
-
-    try {
-      const response = await fetch('/api/lotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome_lote: novoLoteNome,
-          qtd_cabecas: parseInt(novoLoteCabecas),
-          peso_total_entrada: parseFloat(novoLotePeso),
-          custo_aquisicao_total: parseFloat(novoLoteCusto),
-          rendimento_carcaca_previsto: parseFloat(novoLoteRendimento)
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao registrar novo lote no banco Neon.');
-      }
-
-      const result = await response.json();
-      setFormSuccess('Novo lote e pesagem de entrada registrados com sucesso!');
-      
-      // Limpar formulário
-      setNovoLoteNome('');
-      setNovoLoteCabecas('');
-      setNovoLotePeso('');
-      setNovoLoteCusto('');
-      setNovoLoteRendimento('54.0');
-      
-      // Fechar formulário após 1.5s e recarregar
-      setTimeout(() => {
-        setShowNovoLoteForm(false);
-        setFormSuccess(null);
-        // Forçar seleção do novo lote após recarregar
-        if (result.lote_id) {
-          setSelectedLoteId(result.lote_id);
-        }
-        loadDashboardData();
-      }, 1500);
-
-    } catch (err: any) {
-      setFormError(err.message || 'Erro ao processar criação de lote.');
-    } finally {
-      setSubmittingLote(false);
-    }
-  };
-
   // Submeter Nova Pesagem
   const handleCreatePesagem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,7 +144,6 @@ export default function Dashboard() {
     setFormSuccess(null);
 
     try {
-      // Usar a nossa rota de sync em lote para registrar a pesagem individual
       const response = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -351,13 +285,9 @@ export default function Dashboard() {
         </div>
         
         <div style={styles.actionsHeader}>
-          {/* Botão Novo Lote */}
+          {/* Botão Novo Lote redireciona para a página correspondente no Sidebar */}
           <button 
-            onClick={() => {
-              setShowNovoLoteForm(!showNovoLoteForm);
-              setShowNovaPesagemForm(false);
-              setFormError(null);
-            }} 
+            onClick={() => router.push('/lote')} 
             style={styles.addLoteBtn}
           >
             <PlusCircle size={16} style={{ marginRight: '6px' }} /> Novo Lote
@@ -367,7 +297,6 @@ export default function Dashboard() {
             <button 
               onClick={() => {
                 setShowNovaPesagemForm(!showNovaPesagemForm);
-                setShowNovoLoteForm(false);
                 setFormError(null);
               }} 
               style={styles.addPesagemBtn}
@@ -394,79 +323,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Form de Lançamento de Novo Lote */}
-      {showNovoLoteForm && (
-        <div className="glass-panel" style={styles.formPanel}>
-          <h3 style={styles.formTitle}>Cadastrar Novo Lote no Confinamento</h3>
-          <form onSubmit={handleCreateLote} style={styles.formInline}>
-            <div style={styles.formField}>
-              <label style={styles.formLabel}>Nome do Lote</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Lote Nelore B3" 
-                value={novoLoteNome} 
-                onChange={(e) => setNovoLoteNome(e.target.value)} 
-                style={styles.formInput} 
-                required 
-              />
-            </div>
-            <div style={styles.formField}>
-              <label style={styles.formLabel}>Quantidade (Cabeças)</label>
-              <input 
-                type="number" 
-                placeholder="Ex: 100" 
-                value={novoLoteCabecas} 
-                onChange={(e) => setNovoLoteCabecas(e.target.value)} 
-                style={styles.formInput} 
-                required 
-              />
-            </div>
-            <div style={styles.formField}>
-              <label style={styles.formLabel}>Peso Total de Entrada (kg)</label>
-              <input 
-                type="number" 
-                placeholder="Ex: 30000" 
-                value={novoLotePeso} 
-                onChange={(e) => setNovoLotePeso(e.target.value)} 
-                style={styles.formInput} 
-                required 
-              />
-            </div>
-            <div style={styles.formField}>
-              <label style={styles.formLabel}>Custo de Aquisição (R$)</label>
-              <input 
-                type="number" 
-                placeholder="Ex: 180000" 
-                value={novoLoteCusto} 
-                onChange={(e) => setNovoLoteCusto(e.target.value)} 
-                style={styles.formInput} 
-                required 
-              />
-            </div>
-            <div style={styles.formField}>
-              <label style={styles.formLabel}>Rendimento Carcaça (%)</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                value={novoLoteRendimento} 
-                onChange={(e) => setNovoLoteRendimento(e.target.value)} 
-                style={styles.formInput} 
-              />
-            </div>
-            <div style={styles.formActions}>
-              <button type="submit" disabled={submittingLote} style={styles.submitInlineBtn}>
-                {submittingLote ? 'Gravando...' : 'Salvar Lote'}
-              </button>
-              <button type="button" onClick={() => setShowNovoLoteForm(false)} style={styles.cancelInlineBtn}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-          {formError && <div style={styles.formErrorMsg}>{formError}</div>}
-          {formSuccess && <div style={styles.formSuccessMsg}>{formSuccess}</div>}
-        </div>
-      )}
 
       {/* Form de Lançamento de Nova Pesagem */}
       {showNovaPesagemForm && activeLote && (
@@ -952,7 +808,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid var(--color-brand)'
   },
   fechamentoStats: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     border: '1px solid var(--border-color)',
     borderRadius: 'var(--radius-sm)',
     padding: '0.75rem',

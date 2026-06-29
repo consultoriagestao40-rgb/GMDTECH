@@ -139,3 +139,39 @@ button, input, select, textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-brand);
 }
+
+/* Responsividade do Menu Lateral e Layout */
+.layout-content {
+  margin-left: 240px;
+  padding: 2rem;
+  min-height: 100vh;
+  transition: margin-left var(--transition-normal);
+}
+
+.main-content {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Regras Responsivas para Mobile (até 768px de largura) */
+@media (max-width: 768px) {
+  /* Forçar a exibição do cabeçalho mobile */
+  div[class*="mobileHeader"] {
+    display: flex !important;
+  }
+  
+  /* Ajustar o container de conteúdo para mobile */
+  .layout-content {
+    margin-left: 0;
+    padding: 1rem;
+    padding-top: 80px; /* espaço para não cortar atrás da barra mobile de 60px */
+    min-height: calc(100vh - 60px);
+  }
+  
+  /* No celular, esconder o menu lateral fixo para deslizar na animação */
+  aside {
+    width: 280px !important;
+  }
+}
+
