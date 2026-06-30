@@ -70,8 +70,7 @@ export async function POST(request: Request) {
 
     // 2. Gerar individualmente as cabeças de gado na tabela 'animais' e suas pesagens iniciais
     for (let i = 1; i <= cabecas; i++) {
-      // Padroniza a string de identificação do brinco, ex: "LOTE B3-001"
-      const brincoTag = `${nome_lote.toUpperCase().replace(/[^A-Z0-9]/g, '')}-${String(i).padStart(3, '0')}`;
+      const brincoTag = String(i);
 
       // Inserir animal
       const insertAnimalResult = await sql`
