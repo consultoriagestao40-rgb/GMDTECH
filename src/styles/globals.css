@@ -275,6 +275,9 @@ button, input, select, textarea {
     min-height: 42px !important;
     font-size: 0.85rem !important;
     padding: 0.5rem 0.75rem !important;
+    width: 100% !important; /* Força que todos os campos fiquem contidos no card */
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   button, .btnSubmit {
@@ -282,11 +285,32 @@ button, input, select, textarea {
     font-size: 0.85rem !important;
     padding: 0.5rem 1rem !important;
   }
+  
+  /* Garantir que botões de submit ou de ação principal ocupem largura total no mobile */
+  .btnSubmit, 
+  button[type="submit"],
+  button[style*="background-color: var(--color-brand)"],
+  button[style*="background-color: var(--color-accent)"],
+  div[style*="actionsHeader"] button {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 
   /* Ajustar flexbox da dashboard no celular para empilhar verticalmente de forma limpa */
   div[style*="flex-wrap: wrap"], 
-  div[style*="display: flex"][style*="gap"] {
+  div[style*="display: flex"][style*="gap"],
+  div[style*="display:flex"][style*="gap"] {
     flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Garantir que todos os cartões e sub-painéis tenham largura total */
+  .glass-panel, .glass-card, div[style*="card"], div[style*="Panel"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 }
 
