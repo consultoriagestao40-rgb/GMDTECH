@@ -66,7 +66,6 @@ export default function Sidebar() {
               <Link 
                 key={item.href} 
                 href={item.href}
-                className={item.className || ''}
                 onClick={() => setIsOpen(false)}
                 style={{
                   ...styles.navLink,
