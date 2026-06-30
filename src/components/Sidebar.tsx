@@ -1,13 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut, Users, FileText, AlertTriangle } from 'lucide-react';
+import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut, Users, FileText, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    // Carrega o estado de recolhido do localStorage (apenas no cliente)
+    const stored = localStorage.getItem('gmdtech_sidebar_collapsed');
+    if (stored === 'true') {
+      setIsCollapsed(true);
+      document.body.classList.add('sidebar-collapsed');
+    }
+  }, []);
+
+  const toggleCollapse = () => {
+    const nextState = !isCollapsed;
+    setIsCollapsed(nextState);
+    if (nextState) {
+      document.body.classList.add('sidebar-collapsed');
+      localStorage.setItem('gmdtech_sidebar_collapsed', 'true');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
+      localStorage.setItem('gmdtech_sidebar_collapsed', 'false');
+    }
+  };
 
   const menuItems = [
     { name: 'Painel Geral', href: '/', icon: <BarChart3 size={18} /> },
@@ -47,11 +69,20 @@ export default function Sidebar() {
 
       {/* MENU LATERAL COMPLETO (Desktop fixo / Mobile deslizante) */}
       <aside className={`sidebar-container glass-panel ${isOpen ? 'open' : ''}`}>
+        {/* Botão de colapsar sidebar no Desktop */}
+        <button 
+          onClick={toggleCollapse} 
+          className="sidebar-toggle-btn"
+          title={isCollapsed ? "Expandir menu" : "Recolher menu"}
+        >
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+
         {/* Logo Desktop */}
-        <div style={styles.logoWrapper}>
-          <Link href="/" style={styles.logoDesktop}>
+        <div style={styles.logoWrapper} className="logo-wrapper">
+          <Link href="/" style={styles.logoDesktop} className="logo-desktop">
             <span style={{ fontSize: '2rem' }}>🐂</span>
-            <span style={styles.logoText}>
+            <span style={styles.logoText} className="logo-text">
               <strong style={{ color: '#fff' }}>GMD</strong>
               <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>Tech</span>
             </span>
@@ -59,13 +90,14 @@ export default function Sidebar() {
         </div>
 
         {/* Links de Navegação */}
-        <nav style={styles.nav}>
+        <nav style={styles.nav} className="nav-container">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link 
                 key={item.href} 
                 href={item.href}
+                className="nav-link-item"
                 onClick={() => setIsOpen(false)}
                 style={{
                   ...styles.navLink,
@@ -74,22 +106,23 @@ export default function Sidebar() {
                   borderLeft: isActive ? '3px solid var(--color-brand)' : '3px solid transparent'
                 }}
               >
-                <span style={{ marginRight: '10px', display: 'flex', alignItems: 'center' }}>
+                <span style={{ marginRight: '10px', display: 'flex', alignItems: 'center' }} className="nav-icon-wrapper">
                   {item.icon}
                 </span>
-                {item.name}
+                <span className="nav-text">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* Footer do Menu - Substituído pelo Botão de Sair */}
-        <div style={styles.footer}>
+        <div style={styles.footer} className="footer-container">
           <button
             onClick={() => {
               localStorage.removeItem('gmdtech_user');
               window.location.reload();
             }}
+            className="footer-btn"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -108,7 +141,7 @@ export default function Sidebar() {
             }}
           >
             <LogOut size={16} />
-            Sair da Conta
+            <span className="btn-text">Sair da Conta</span>
           </button>
         </div>
       </aside>

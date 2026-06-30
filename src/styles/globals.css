@@ -184,7 +184,7 @@ button, input, select, textarea {
   padding: 1.5rem 0;
   z-index: 100;
   border-right: 1px solid var(--border-color);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateX(0); /* Sempre visível no desktop */
 }
 
@@ -373,5 +373,92 @@ button, input, select, textarea {
 }
 .mobile-only {
   display: none;
+}
+
+/* Sidebar Collapsed State (Desktop only) */
+@media (min-width: 769px) {
+  body.sidebar-collapsed .sidebar-container {
+    width: 70px;
+  }
+  
+  body.sidebar-collapsed .layout-content {
+    margin-left: 70px;
+  }
+  
+  /* Hide text elements */
+  body.sidebar-collapsed .sidebar-container .logo-text,
+  body.sidebar-collapsed .sidebar-container .nav-text,
+  body.sidebar-collapsed .sidebar-container .btn-text {
+    display: none;
+  }
+  
+  /* Adjust paddings/margins for collapsed state */
+  body.sidebar-collapsed .sidebar-container .logo-wrapper {
+    padding: 0 0 2rem 0 !important;
+    display: flex;
+    justify-content: center;
+  }
+  
+  body.sidebar-collapsed .sidebar-container .logo-desktop {
+    gap: 0 !important;
+    justify-content: center;
+  }
+  
+  body.sidebar-collapsed .sidebar-container .nav-container {
+    padding: 0 !important;
+  }
+  
+  body.sidebar-collapsed .sidebar-container .nav-link-item {
+    justify-content: center;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  
+  body.sidebar-collapsed .sidebar-container .nav-icon-wrapper {
+    margin-right: 0 !important;
+  }
+  
+  body.sidebar-collapsed .sidebar-container .footer-container {
+    padding: 0 0.5rem !important;
+  }
+  
+  body.sidebar-collapsed .sidebar-container .footer-btn {
+    padding: 0.65rem 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+}
+
+/* Floating Sidebar Toggle Button */
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 24px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 101;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--color-brand);
+  color: #fff;
+  border-color: var(--color-brand);
+  transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    display: none !important;
+  }
 }
 
