@@ -601,7 +601,7 @@ export default function FluxoPage() {
           </div>
 
           {/* Gráfico da Curva de Caixa Acumulado */}
-          <div className="glass-panel" style={styles.panel}>
+          <div className="glass-panel chart-container-panel" style={styles.panel}>
             <h3 style={styles.panelTitle}>📊 CURVA DE CAIXA ACUMULADO & CAPITAL DE GIRO REQUERIDO</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', marginTop: '-0.75rem' }}>
               Esta curva ilustra a evolução do saldo de caixa acumulado do lote. O ponto mais baixo representa o Capital de Giro máximo exigido pelo confinamento antes do faturamento final da venda.
