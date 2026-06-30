@@ -1102,7 +1102,8 @@ export default function Dashboard() {
           <div className="glass-panel" style={styles.tablePanel}>
             <div style={styles.tableHeader}>
               <h3 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>Controle Individual de Animais (Brincos)</h3>
-              {/* Filtros de Busca e Status (Estilo do Sistema GMDTech) */}
+            </div>
+            {/* Filtros de Busca e Status (Estilo do Sistema GMDTech) */}
             <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', width: '100%', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px', position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input 
