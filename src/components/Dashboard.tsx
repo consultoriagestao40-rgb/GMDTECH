@@ -68,7 +68,7 @@ export default function Dashboard() {
 
   // Estados para Ações Individuais (Modais)
   const [activeAnimalId, setActiveAnimalId] = useState<number | null>(null);
-  const [modalMode, setModalMode] = useState<'pesagem' | 'venda' | 'edicao' | null>(null);
+  const [modalMode, setModalMode] = useState<'pesagem' | 'venda' | 'edicao' | 'cadastro' | null>(null);
   
   // Inputs dos Modais
   const [modalPeso, setModalPeso] = useState<string>('');
@@ -319,7 +319,7 @@ export default function Dashboard() {
   // Submeter Ações Individuais dos Animais (Modais)
   const handleAnimalAction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeAnimalId) return;
+    if (modalMode !== 'cadastro' && !activeAnimalId) return;
 
     setSubmittingAction(true);
     setFormError(null);
@@ -328,18 +328,26 @@ export default function Dashboard() {
     try {
       let url = '/api/animais';
       let method = 'POST';
-      let body: any = { animal_id: activeAnimalId };
+      let body: any = {};
 
-      if (modalMode === 'pesagem') {
-        body.peso = parseFloat(modalPeso);
-      } else if (modalMode === 'edicao') {
+      if (modalMode === 'cadastro') {
+        body.lote_id = selectedLoteId;
         body.brinco = modalBrinco;
+        body.peso_entrada = parseFloat(modalPeso);
         body.data_entrada = modalDataEntrada;
-      } else if (modalMode === 'venda') {
-        method = 'PUT';
-        body.peso_saida = parseFloat(modalVendaPesoSaida);
-        body.preco_venda_arroba = parseFloat(modalVendaPrecoArroba);
-        body.rendimento_carcaca_real = parseFloat(modalVendaRendimento);
+      } else {
+        body.animal_id = activeAnimalId;
+        if (modalMode === 'pesagem') {
+          body.peso = parseFloat(modalPeso);
+        } else if (modalMode === 'edicao') {
+          body.brinco = modalBrinco;
+          body.data_entrada = modalDataEntrada;
+        } else if (modalMode === 'venda') {
+          method = 'PUT';
+          body.peso_saida = parseFloat(modalVendaPesoSaida);
+          body.preco_venda_arroba = parseFloat(modalVendaPrecoArroba);
+          body.rendimento_carcaca_real = parseFloat(modalVendaRendimento);
+        }
       }
 
       const response = await fetch(url, {
@@ -379,6 +387,16 @@ export default function Dashboard() {
     setModalVendaPesoSaida(String(animal.peso_atual));
     setModalVendaPrecoArroba('300.00');
     setModalVendaRendimento('54.0');
+    setFormError(null);
+    setFormSuccess(null);
+  };
+
+  const openCadastroModal = () => {
+    setModalMode('cadastro');
+    setActiveAnimalId(null);
+    setModalPeso('');
+    setModalBrinco('');
+    setModalDataEntrada(new Date().toISOString().split('T')[0]);
     setFormError(null);
     setFormSuccess(null);
   };
@@ -1102,6 +1120,27 @@ export default function Dashboard() {
           <div className="glass-panel" style={styles.tablePanel}>
             <div style={styles.tableHeader}>
               <h3 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>Controle Individual de Animais (Brincos)</h3>
+              {activeLote.status === 'ativo' && (
+                <button 
+                  onClick={openCadastroModal}
+                  style={{
+                    backgroundColor: 'var(--color-brand)',
+                    color: '#fff',
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: 'var(--radius-sm)',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    border: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                  }}
+                >
+                  <PlusCircle size={14} /> Cadastrar Animal
+                </button>
+              )}
             </div>
             {/* Filtros de Busca e Status (Estilo do Sistema GMDTech) */}
             <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', width: '100%', flexWrap: 'wrap' }}>
@@ -1324,16 +1363,56 @@ export default function Dashboard() {
       )}
 
       {/* MODAL GLOBAL PARA AÇÕES DE ANIMAIS */}
-      {modalMode && activeAnimalId && (
+      {modalMode && (activeAnimalId || modalMode === 'cadastro') && (
         <div style={styles.modalOverlay}>
           <div className="glass-panel" style={styles.modalContent}>
             <h3 style={styles.modalTitle}>
               {modalMode === 'pesagem' && 'Registrar Nova Pesagem'}
               {modalMode === 'edicao' && 'Editar Identificação do Brinco'}
               {modalMode === 'venda' && 'Venda / Saída de Cabeça de Gado'}
+              {modalMode === 'cadastro' && 'Cadastrar Novo Animal no Lote'}
             </h3>
 
             <form onSubmit={handleAnimalAction} style={styles.modalForm}>
+              {/* Modo Cadastro de Novo Animal */}
+              {modalMode === 'cadastro' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Identificação (Brinco):</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ex: BR-120"
+                      value={modalBrinco}
+                      onChange={(e) => setModalBrinco(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Peso de Entrada (kg vivo):</label>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      placeholder="Ex: 310.5"
+                      value={modalPeso}
+                      onChange={(e) => setModalPeso(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Data de Entrada no Confinamento:</label>
+                    <input 
+                      type="date" 
+                      value={modalDataEntrada}
+                      onChange={(e) => setModalDataEntrada(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Modo Pesagem */}
               {modalMode === 'pesagem' && (
                 <div style={styles.inputField}>

@@ -5,10 +5,60 @@ import { sql } from '../../../db/neon';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { animal_id, peso, data_pesagem, brinco, data_entrada } = body;
+    const { animal_id, lote_id, peso, data_pesagem, brinco, data_entrada, peso_entrada } = body;
 
+    // Operação 0: Se NÃO houver animal_id, mas houver lote_id, criamos um novo animal do zero!
     if (!animal_id) {
-      return NextResponse.json({ error: 'ID do animal é obrigatório.' }, { status: 400 });
+      if (!lote_id || !brinco || !peso_entrada) {
+        return NextResponse.json({ error: 'Lote, código do brinco e peso de entrada são obrigatórios para novo animal.' }, { status: 400 });
+      }
+
+      const loteId = parseInt(lote_id);
+      const pesoEntradaNum = parseFloat(peso_entrada);
+      const brincoLimpo = brinco.trim().toUpperCase();
+      const dataEntradaDate = data_entrada ? new Date(data_entrada) : new Date();
+
+      if (pesoEntradaNum <= 0) {
+        return NextResponse.json({ error: 'O peso de entrada deve ser maior que zero.' }, { status: 400 });
+      }
+
+      // Verificar duplicados no mesmo lote
+      const brincoExiste = await sql`
+        SELECT id FROM animais WHERE lote_id = ${loteId} AND brinco = ${brincoLimpo}
+      `;
+
+      if (brincoExiste.length > 0) {
+        return NextResponse.json({ error: `Já existe um animal com o brinco "${brincoLimpo}" neste lote.` }, { status: 400 });
+      }
+
+      // 1. Inserir na tabela animais
+      const insertAnimalRes = await sql`
+        INSERT INTO animais (lote_id, brinco, peso_entrada, status, data_entrada)
+        VALUES (${loteId}, ${brincoLimpo}, ${pesoEntradaNum}, 'ativo', ${dataEntradaDate})
+        RETURNING id
+      `;
+
+      const newAnimalId = insertAnimalRes[0].id;
+
+      // 2. Inserir a pesagem inicial vinculada
+      await sql`
+        INSERT INTO pesagens (animal_id, peso, data_pesagem)
+        VALUES (${newAnimalId}, ${pesoEntradaNum}, ${dataEntradaDate})
+      `;
+
+      // 3. Atualizar a contagem de cabeças no lote
+      await sql`
+        UPDATE lotes 
+        SET qtd_cabecas = qtd_cabecas + 1,
+            peso_total_entrada = peso_total_entrada + ${pesoEntradaNum}
+        WHERE id = ${loteId}
+      `;
+
+      return NextResponse.json({
+        success: true,
+        message: 'Novo animal (brinco) cadastrado com sucesso no lote!',
+        animal_id: newAnimalId
+      }, { status: 201 });
     }
 
     const animalId = parseInt(animal_id);
