@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { FileText, Calendar, TrendingUp, AlertTriangle, HelpCircle, ArrowLeft, RefreshCw, BarChart2, PlusCircle } from 'lucide-react';
@@ -41,7 +41,7 @@ interface Perda {
   data_perda: string;
 }
 
-export default function ExtratoPage() {
+function ExtratoPageContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'lotes';
   
@@ -393,3 +393,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-secondary)'
   }
 };
+
+export default function ExtratoPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-primary)', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '12px' }}>
+        <RefreshCw className="spin" size={32} color="var(--color-brand)" />
+        <span style={{ color: 'var(--text-secondary)' }}>Carregando extratos...</span>
+      </div>
+    }>
+      <ExtratoPageContent />
+    </Suspense>
+  );
+}
