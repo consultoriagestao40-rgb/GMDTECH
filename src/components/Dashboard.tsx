@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { DollarSign, TrendingUp, Award, Users, RefreshCw, BarChart2, Calendar, Target, AlertTriangle, PlusCircle, Scale, Tag, Trash2, Edit2, ShoppingCart, Check } from 'lucide-react';
+import { DollarSign, TrendingUp, Award, Users, RefreshCw, BarChart2, Calendar, Target, AlertTriangle, PlusCircle, Scale, Tag, Trash2, Edit2, ShoppingCart, Check, Search } from 'lucide-react';
 
 interface LoteStats {
   id: number;
@@ -77,6 +77,20 @@ export default function Dashboard() {
   const [modalVendaPesoSaida, setModalVendaPesoSaida] = useState<string>('');
   const [modalVendaPrecoArroba, setModalVendaPrecoArroba] = useState<string>('300.00');
   const [modalVendaRendimento, setModalVendaRendimento] = useState<string>('54.0');
+ 
+  // Estados para Busca e Filtro de Brincos
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Estados para Edição do Lote
   const [showEditLoteModal, setShowEditLoteModal] = useState<boolean>(false);
@@ -750,6 +764,17 @@ export default function Dashboard() {
       </div>
     );
   };
+  
+  // Filtrar animais com base na busca e no status selecionado
+  const filteredAnimais = animais.filter(animal => {
+    const matchesSearch = animal.brinco.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'todos' 
+      ? true 
+      : statusFilter === 'ativo' 
+        ? animal.status === 'ativo' 
+        : animal.status === 'vendido';
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div style={styles.dashboard}>
@@ -1077,99 +1102,141 @@ export default function Dashboard() {
           <div className="glass-panel" style={styles.tablePanel}>
             <div style={styles.tableHeader}>
               <h3 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>Controle Individual de Animais (Brincos)</h3>
-              <span style={styles.tableSubtitle}>Cada cabeça é pesada e vendida de forma independente</span>
+              {/* Filtros de Busca e Status (Estilo do Sistema GMDTech) */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', width: '100%', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px', position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  placeholder="Pesquisar brinco..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem 1rem 0.6rem 2.2rem',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    color: '#fff',
+                    outline: 'none',
+                    fontSize: '0.85rem'
+                  }}
+                />
+                <span style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                  <Search size={14} />
+                </span>
+              </div>
+              
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  width: '140px',
+                  padding: '0.6rem 1rem',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  color: '#fff',
+                  outline: 'none',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="ativo">Confinados</option>
+                <option value="vendido">Vendidos</option>
+              </select>
             </div>
 
-            <div style={styles.tableResponsive} className="desktop-only">
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>Identificação (Brinco)</th>
-                    <th style={styles.th}>Data de Entrada</th>
-                    <th style={styles.th}>Peso de Entrada</th>
-                    <th style={styles.th}>Peso Atual/Saída</th>
-                    <th style={styles.th}>GMD Individual</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {animais.map((animal) => (
-                    <tr key={animal.id} style={styles.tr}>
-                      <td style={styles.td}>
-                        <span style={styles.brincoLabel}>
-                          <Tag size={12} style={{ marginRight: '6px' }} />
-                          {animal.brinco}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        <div>{new Date(animal.data_entrada).toLocaleDateString('pt-BR')}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {animal.dias_confinamento} dias confinado
-                        </div>
-                      </td>
-                      <td style={styles.td}>{animal.peso_entrada.toFixed(1)} kg</td>
-                      <td style={styles.td}>
-                        <strong style={{ color: '#fff' }}>
-                          {animal.status === 'vendido' ? `${animal.peso_saida?.toFixed(1)} kg` : `${animal.peso_atual.toFixed(1)} kg`}
-                        </strong>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
-                          +{animal.gmd.toFixed(3)} kg/dia
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{
-                          ...styles.statusBadge,
-                          backgroundColor: animal.status === 'ativo' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                          color: animal.status === 'ativo' ? 'var(--color-brand)' : 'var(--color-danger)'
-                        }}>
-                          {animal.status === 'ativo' ? '🟢 Confinado' : '🔴 Vendido'}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        {animal.status === 'ativo' ? (
-                          <div style={styles.actionsGroup}>
-                            <button 
-                              onClick={() => openModal(animal, 'pesagem')} 
-                              style={styles.actionBtn} 
-                              title="Lançar pesagem"
-                            >
-                              <Scale size={14} /> Pesar
-                            </button>
-                            <button 
-                              onClick={() => openModal(animal, 'venda')} 
-                              style={{ ...styles.actionBtn, color: 'var(--color-accent)' }} 
-                              title="Registrar abate/venda individual"
-                            >
-                              <ShoppingCart size={14} /> Vender
-                            </button>
-                            <button 
-                              onClick={() => openModal(animal, 'edicao')} 
-                              style={{ ...styles.actionBtn, color: 'var(--text-muted)' }} 
-                              title="Editar identificação do brinco"
-                            >
-                              {/* Edit2 import is on line 5 */}
-                              Editar
-                            </button>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            R$ {animal.preco_venda_arroba?.toFixed(2)} / @ ({animal.rendimento_carcaca_real}% rend.)
-                          </span>
-                        )}
-                      </td>
+            {!isMobile ? (
+              /* TABELA DESKTOP COMPLETA */
+              <div style={styles.tableResponsive}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Identificação (Brinco)</th>
+                      <th style={styles.th}>Data de Entrada</th>
+                      <th style={styles.th}>Peso de Entrada</th>
+                      <th style={styles.th}>Peso Atual/Saída</th>
+                      <th style={styles.th}>GMD Individual</th>
+                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Ações</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* CARD VIEW MOBILE - Exibido apenas em celulares */}
-            <div className="mobile-only" style={{ display: 'none' }}>
+                  </thead>
+                  <tbody>
+                    {filteredAnimais.map((animal) => (
+                      <tr key={animal.id} style={styles.tr}>
+                        <td style={styles.td}>
+                          <span style={styles.brincoLabel}>
+                            <Tag size={12} style={{ marginRight: '6px' }} />
+                            {animal.brinco}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          <div>{new Date(animal.data_entrada).toLocaleDateString('pt-BR')}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {animal.dias_confinamento} dias confinado
+                          </div>
+                        </td>
+                        <td style={styles.td}>{animal.peso_entrada.toFixed(1)} kg</td>
+                        <td style={styles.td}>
+                          <strong style={{ color: '#fff' }}>
+                            {animal.status === 'vendido' ? `${animal.peso_saida?.toFixed(1)} kg` : `${animal.peso_atual.toFixed(1)} kg`}
+                          </strong>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
+                            +{animal.gmd.toFixed(3)} kg/dia
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{
+                            ...styles.statusBadge,
+                            backgroundColor: animal.status === 'ativo' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: animal.status === 'ativo' ? 'var(--color-brand)' : 'var(--color-danger)'
+                          }}>
+                            {animal.status === 'ativo' ? '🟢 Confinado' : '🔴 Vendido'}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          {animal.status === 'ativo' ? (
+                            <div style={styles.actionsGroup}>
+                              <button 
+                                onClick={() => openModal(animal, 'pesagem')} 
+                                style={styles.actionBtn} 
+                                title="Lançar pesagem"
+                              >
+                                <Scale size={14} /> Pesar
+                              </button>
+                              <button 
+                                onClick={() => openModal(animal, 'venda')} 
+                                style={{ ...styles.actionBtn, color: 'var(--color-accent)' }} 
+                                title="Registrar abate/venda individual"
+                              >
+                                <ShoppingCart size={14} /> Vender
+                              </button>
+                              <button 
+                                onClick={() => openModal(animal, 'edicao')} 
+                                style={{ ...styles.actionBtn, color: 'var(--text-muted)' }} 
+                                title="Editar identificação do brinco"
+                              >
+                                Editar
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              R$ {animal.preco_venda_arroba?.toFixed(2)} / @ ({animal.rendimento_carcaca_real}% rend.)
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* VISTA EM CARDS PARA MOBILE (Estilo Premium GMDTech que o usuário elogiou) */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-                {animais.map((animal) => (
+                {filteredAnimais.map((animal) => (
                   <div key={animal.id} className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
                     {/* Header do Card */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1194,13 +1261,13 @@ export default function Dashboard() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '0.5rem 0' }}>
                       <div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Peso Atual/Saída</div>
-                        <strong style={{ color: '#fff', fontSize: '0.95rem' }}>
+                        <strong style={{ color: '#fff', fontSize: '1.05rem' }}>
                           {animal.status === 'vendido' ? `${animal.peso_saida?.toFixed(1)} kg` : `${animal.peso_atual.toFixed(1)} kg`}
                         </strong>
                       </div>
                       <div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>GMD Individual</div>
-                        <strong style={{ color: 'var(--color-brand)', fontSize: '0.95rem' }}>
+                        <strong style={{ color: 'var(--color-brand)', fontSize: '1.05rem' }}>
                           +{animal.gmd.toFixed(3)} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>kg/d</span>
                         </strong>
                       </div>
@@ -1215,22 +1282,22 @@ export default function Dashboard() {
                     {/* Botões de Ação no Rodapé do Card */}
                     <div style={{ marginTop: '0.25rem' }}>
                       {animal.status === 'ativo' ? (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                           <button 
                             onClick={() => openModal(animal, 'pesagem')} 
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '0.5rem', borderRadius: '6px', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--color-accent)', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(245, 158, 11, 0.15)', cursor: 'pointer' }} 
+                            style={{ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0.6rem', borderRadius: '6px', backgroundColor: 'transparent', color: 'var(--color-accent)', fontSize: '0.85rem', fontWeight: 600, border: '1px solid var(--color-accent)', cursor: 'pointer', minHeight: '42px' }} 
                           >
-                            <Scale size={12} /> Pesar
+                            <Scale size={14} /> Pesar
                           </button>
                           <button 
                             onClick={() => openModal(animal, 'venda')} 
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '0.5rem', borderRadius: '6px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-brand)', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.15)', cursor: 'pointer' }} 
+                            style={{ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '0.6rem', borderRadius: '6px', backgroundColor: 'transparent', color: 'var(--color-brand)', fontSize: '0.85rem', fontWeight: 600, border: '1px solid var(--color-brand)', cursor: 'pointer', minHeight: '42px' }} 
                           >
-                            <ShoppingCart size={12} /> Vender
+                            <ShoppingCart size={14} /> Vender
                           </button>
                           <button 
                             onClick={() => openModal(animal, 'edicao')} 
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', borderRadius: '6px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.08)', cursor: 'pointer' }} 
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.6rem 0.8rem', borderRadius: '6px', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.08)', cursor: 'pointer', minHeight: '42px' }} 
                           >
                             Editar
                           </button>
@@ -1244,7 +1311,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         </>
       ) : (
