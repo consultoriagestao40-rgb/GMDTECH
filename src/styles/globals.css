@@ -192,11 +192,12 @@ button, input, select, textarea {
 @media (max-width: 768px) {
   .mobile-header {
     display: flex !important; /* Exibe no mobile */
+    height: 60px !important;
   }
 
   .sidebar-container {
     transform: translateX(-100%); /* Esconde fora da tela no mobile */
-    width: 260px !important;
+    width: 280px !important;
     box-shadow: 8px 0 32px rgba(0, 0, 0, 0.6);
     border-radius: 0 16px 16px 0 !important;
   }
@@ -207,9 +208,52 @@ button, input, select, textarea {
 
   .layout-content {
     margin-left: 0 !important;
-    padding: 1rem !important;
-    padding-top: 80px !important; /* Espaço para a barra mobile */
+    padding: 0.75rem !important; /* Margens laterais mais compactas típicas de apps */
+    padding-top: 76px !important; /* Espaço para cabeçalho mobile + margem */
     min-height: calc(100vh - 60px);
+  }
+
+  /* Deixar o visual com tamanho padrão de APP (fontes e botões legíveis) */
+  .glass-panel, .glass-card {
+    padding: 1rem !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Títulos e textos com tamanho proporcional de aplicativo móvel */
+  h1 {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+  }
+
+  h2 {
+    font-size: 1.2rem !important;
+  }
+
+  h3 {
+    font-size: 1.05rem !important;
+  }
+
+  p, span, label, td, th {
+    font-size: 0.88rem !important;
+  }
+
+  /* Inputs, selects e botões com tamanho de toque de dedo (mínimo 44px de altura) */
+  input, select, textarea {
+    min-height: 42px !important;
+    font-size: 0.9rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  button, .btnSubmit {
+    min-height: 42px !important;
+    font-size: 0.9rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+
+  /* Ajustar flexbox da dashboard no celular para empilhar verticalmente de forma limpa */
+  div[style*="flex-wrap: wrap"] {
+    flex-direction: column !important;
   }
 }
 

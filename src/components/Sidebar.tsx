@@ -25,15 +25,15 @@ export default function Sidebar() {
     <>
       {/* HEADER MOBILE (Barra superior que só aparece em telas menores) */}
       <div className="mobile-header">
-        <button onClick={toggleSidebar} style={styles.menuBtn} aria-label="Menu">
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-
         <Link href="/" style={styles.logo} onClick={() => setIsOpen(false)}>
-          <span style={{ marginRight: '6px', fontSize: '1.25rem' }}>🐂</span>
-          <strong style={{ color: '#fff' }}>GMD</strong>
-          <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>Tech</span>
+          <span style={{ marginRight: '6px', fontSize: '1.3rem' }}>🐂</span>
+          <strong style={{ color: '#fff', fontSize: '1.15rem' }}>GMD</strong>
+          <span style={{ color: 'var(--color-brand)', fontWeight: 600, fontSize: '1.15rem' }}>Tech</span>
         </Link>
+
+        <button onClick={toggleSidebar} style={styles.menuBtn} aria-label="Menu">
+          {isOpen ? <X size={28} /> : <Menu size={28} />}
+        </button>
       </div>
 
       {/* OVERLAY DE MÁSCARA MOBILE (Fundo escuro translúcido ao abrir menu no celular) */}
