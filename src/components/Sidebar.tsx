@@ -17,8 +17,7 @@ export default function Sidebar() {
     { name: 'Premissas Trato', href: '/premissas', icon: <Sliders size={18} /> },
     { name: 'Fluxo e Resultados', href: '/fluxo', icon: <TrendingUp size={18} /> },
     { name: 'Usuários', href: '/usuarios', icon: <Users size={18} /> },
-    { name: 'Extratos', href: '/extrato', icon: <FileText size={18} />, className: 'desktop-only' },
-    { name: 'Histórico de Perdas', href: '/extrato?tab=perdas', icon: <AlertTriangle size={18} />, className: 'mobile-only' }
+    { name: 'Extratos', href: '/extrato', icon: <FileText size={18} /> }
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);

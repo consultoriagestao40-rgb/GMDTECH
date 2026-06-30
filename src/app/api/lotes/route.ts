@@ -10,7 +10,8 @@ export async function POST(request: Request) {
       qtd_cabecas, 
       peso_total_entrada, 
       custo_aquisicao_total, 
-      rendimento_carcaca_previsto 
+      rendimento_carcaca_previsto,
+      custo_financeiro_total
     } = body;
 
     if (!nome_lote || !qtd_cabecas || !peso_total_entrada || !custo_aquisicao_total) {
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
     const te = parseFloat(body.taxa_engorda || '2.2');
     const gmd = parseFloat(body.gmd_estimado || '1.500');
     const ciclo = parseInt(body.ciclo_dias || '90');
+    const custoFinanceiro = parseFloat(custo_financeiro_total || '0');
 
     if (cabecas <= 0 || pesoTotal <= 0 || custoAquisicao < 0) {
       return NextResponse.json({ error: 'Valores numéricos inválidos.' }, { status: 400 });
@@ -46,7 +48,8 @@ export async function POST(request: Request) {
         taxa_adaptacao,
         taxa_engorda,
         gmd_estimado,
-        ciclo_dias
+        ciclo_dias,
+        custo_financeiro_total
       )
       VALUES (
         ${nome_lote}, 
@@ -60,7 +63,8 @@ export async function POST(request: Request) {
         ${ta},
         ${te},
         ${gmd},
-        ${ciclo}
+        ${ciclo},
+        ${custoFinanceiro}
       )
       RETURNING id
     `;
@@ -133,7 +137,7 @@ export async function DELETE(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida } = body;
+    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida, custo_financeiro_total } = body;
 
     if (!id || !nome_lote) {
       return NextResponse.json({ error: 'ID e Nome do lote são obrigatórios.' }, { status: 400 });
@@ -149,6 +153,7 @@ export async function PUT(request: Request) {
     const gmd = parseFloat(gmd_estimado || '1.500');
     const ciclo = parseInt(ciclo_dias || '90');
     const pesoMeta = peso_meta_saida ? parseFloat(peso_meta_saida) : null;
+    const custoFinanceiro = parseFloat(custo_financeiro_total || '0');
 
     await sql`
       UPDATE lotes 
@@ -161,7 +166,8 @@ export async function PUT(request: Request) {
           taxa_engorda = ${te},
           gmd_estimado = ${gmd},
           ciclo_dias = ${ciclo},
-          peso_meta_saida = ${pesoMeta}
+          peso_meta_saida = ${pesoMeta},
+          custo_financeiro_total = ${custoFinanceiro}
       WHERE id = ${loteId}
     `;
 

@@ -12,13 +12,16 @@ export async function GET(request: Request) {
     await sql`
       ALTER TABLE lotes ADD COLUMN IF NOT EXISTS peso_meta_saida NUMERIC(10,2);
     `;
+    await sql`
+      ALTER TABLE lotes ADD COLUMN IF NOT EXISTS custo_financeiro_total NUMERIC(12,2) DEFAULT 0.00;
+    `;
 
     // 1. Caso de pesquisa detalhada de um lote específico (para o gráfico e tabela de animais)
     if (loteIdParam) {
       const loteId = parseInt(loteIdParam);
       
       const loteResult = await sql`
-        SELECT id, nome_lote, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida
+        SELECT id, nome_lote, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida, custo_financeiro_total
         FROM lotes 
         WHERE id = ${loteId}
       `;
@@ -50,7 +53,9 @@ export async function GET(request: Request) {
         WHERE lote_id = ${loteId}
       `;
 
-      const custoAquisicaoIndividual = parseFloat(lote.custo_aquisicao_total) / lote.qtd_cabecas;
+      const totalCabecasLote = animaisResult.length > 0 ? animaisResult.length : lote.qtd_cabecas;
+      const custoAquisicaoIndividual = parseFloat(lote.custo_aquisicao_total) / totalCabecasLote;
+      const custoFinanceiroIndividual = parseFloat(lote.custo_financeiro_total || '0') / totalCabecasLote;
 
       // Calcular o GMD individual e os custos acumulados de cada animal
       const animais = animaisResult.map((animal: any) => {
@@ -101,7 +106,8 @@ export async function GET(request: Request) {
           custo_aquisicao: custoAquisicaoIndividual,
           custo_alimentacao: custoAlimentacaoIndividual,
           consumo_racao: consumoRacaoIndividual,
-          custo_total: custoAquisicaoIndividual + custoAlimentacaoIndividual
+          custo_financeiro: custoFinanceiroIndividual,
+          custo_total: custoAquisicaoIndividual + custoAlimentacaoIndividual + custoFinanceiroIndividual
         };
       });
 
@@ -137,9 +143,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ lote, animais, historico }, { status: 200 });
     }
 
-    // 2. Retornar dados agregados de todos os lotes para o Dashboard
     const lotesDb = await sql`
-      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida
+      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida, custo_financeiro_total
       FROM lotes 
       ORDER BY status ASC, data_entrada DESC
     `;
@@ -239,6 +244,7 @@ export async function GET(request: Request) {
       // Custo Alimentar por @ Produzida
       const custoPorArrobaProduzida = custoTratosTotal / arrobasProduzidasTotal;
       const custoAquisicao = parseFloat(lote.custo_aquisicao_total);
+      const custoFinanceiroTotal = parseFloat(lote.custo_financeiro_total || '0');
 
       return {
         id: loteId,
@@ -255,7 +261,8 @@ export async function GET(request: Request) {
         custo_aquisicao: custoAquisicao,
         custo_tratos_total: custoTratosTotal,
         consumo_racao_total: consumoRacaoTotal,
-        custo_total_lote: custoAquisicao + custoTratosTotal,
+        custo_financeiro_total: custoFinanceiroTotal,
+        custo_total_lote: custoAquisicao + custoTratosTotal + custoFinanceiroTotal,
         arrobas_produzidas_total: arrobasProduzidasTotal,
         custo_por_arroba_produzida: custoPorArrobaProduzida,
         status: lote.status,

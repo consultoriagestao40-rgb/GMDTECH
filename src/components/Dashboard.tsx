@@ -27,6 +27,7 @@ interface LoteStats {
   ciclo_dias: number;
   peso_meta_saida?: number | null;
   consumo_racao_total?: number;
+  custo_financeiro_total: number;
 }
 
 interface PesagemHistorico {
@@ -106,6 +107,7 @@ export default function Dashboard() {
   const [editLoteRendimento, setEditLoteRendimento] = useState<string>('');
   const [editLoteCiclo, setEditLoteCiclo] = useState<string>('90');
   const [editLotePesoMeta, setEditLotePesoMeta] = useState<string>('');
+  const [editLoteFinanceiro, setEditLoteFinanceiro] = useState<string>('0');
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -274,6 +276,7 @@ export default function Dashboard() {
     setEditLoteRendimento(String(activeLote.rendimento_carcaca_previsto || '54.0'));
     setEditLoteCiclo(String(activeLote.ciclo_dias || '90'));
     setEditLotePesoMeta(activeLote.peso_meta_saida ? String(activeLote.peso_meta_saida) : '');
+    setEditLoteFinanceiro(String(activeLote.custo_financeiro_total || '0'));
     setShowEditLoteModal(true);
     setFormError(null);
     setFormSuccess(null);
@@ -302,7 +305,8 @@ export default function Dashboard() {
           custo_aquisicao_total: parseFloat(editLoteCusto) || 0,
           rendimento_carcaca_previsto: parseFloat(editLoteRendimento) || 54.0,
           ciclo_dias: parseInt(editLoteCiclo) || 90,
-          peso_meta_saida: editLotePesoMeta ? parseFloat(editLotePesoMeta) : null
+          peso_meta_saida: editLotePesoMeta ? parseFloat(editLotePesoMeta) : null,
+          custo_financeiro_total: parseFloat(editLoteFinanceiro) || 0
         })
       });
 
@@ -896,7 +900,7 @@ export default function Dashboard() {
                 R$ {activeLote.custo_total_lote.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
               </div>
               <div style={styles.cardFooter}>
-                Aquisição: R$ {activeLote.custo_aquisicao.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} | Tratos: R$ {activeLote.custo_tratos_total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                Aquisição: R$ {activeLote.custo_aquisicao.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} | Tratos: R$ {activeLote.custo_tratos_total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} | Financeiro: R$ {(activeLote.custo_financeiro_total || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
               </div>
             </div>
 
@@ -1775,6 +1779,17 @@ export default function Dashboard() {
                   placeholder="Deixe vazio para usar a projeção GMD"
                   value={editLotePesoMeta}
                   onChange={(e) => setEditLotePesoMeta(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Custo Financeiro / Juros (R$):</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="Ex: Juros, taxas operacionais..."
+                  value={editLoteFinanceiro}
+                  onChange={(e) => setEditLoteFinanceiro(e.target.value)}
                   style={styles.input}
                 />
               </div>

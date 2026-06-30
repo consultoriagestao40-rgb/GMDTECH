@@ -14,6 +14,7 @@ export default function FormLote() {
   const [custoAquisicaoTotal, setNovoLoteCusto] = useState<string>('');
   const [rendimentoCarcacaPrevisto, setNovoLoteRendimento] = useState<string>('54.0');
   const [cicloDias, setCicloDias] = useState<string>('90');
+  const [custoFinanceiroTotal, setNovoLoteFinanceiro] = useState<string>('0');
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -38,7 +39,8 @@ export default function FormLote() {
           peso_total_entrada: parseFloat(pesoTotalEntrada),
           custo_aquisicao_total: parseFloat(custoAquisicaoTotal),
           rendimento_carcaca_previsto: parseFloat(rendimentoCarcacaPrevisto),
-          ciclo_dias: parseInt(cicloDias) || 90
+          ciclo_dias: parseInt(cicloDias) || 90,
+          custo_financeiro_total: parseFloat(custoFinanceiroTotal) || 0
         })
       });
 
@@ -58,6 +60,7 @@ export default function FormLote() {
       setNovoLoteCusto('');
       setNovoLoteRendimento('54.0');
       setCicloDias('90');
+      setNovoLoteFinanceiro('0');
 
       // Redirecionar para o painel após 1.5 segundos
       setTimeout(() => {
@@ -179,6 +182,22 @@ export default function FormLote() {
             required
           />
           <span style={styles.tip}>Média padrão no confinamento: 90 dias</span>
+        </div>
+
+        {/* Custo Financeiro Inicial */}
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>
+            <DollarSign size={14} style={{ marginRight: '6px' }} />
+            Custo Financeiro / Juros Previstos (R$)
+          </label>
+          <input 
+            type="number"
+            placeholder="Ex: 5000.00 (opcional)"
+            value={custoFinanceiroTotal}
+            onChange={(e) => setNovoLoteFinanceiro(e.target.value)}
+            style={styles.input}
+          />
+          <span style={styles.tip}>Previsão de juros ou taxas de financiamento operacionais</span>
         </div>
 
         {/* Botão de Envio */}
