@@ -26,6 +26,7 @@ interface LoteStats {
   gmd_estimado: number;
   ciclo_dias: number;
   peso_meta_saida?: number | null;
+  consumo_racao_total?: number;
 }
 
 interface PesagemHistorico {
@@ -48,6 +49,8 @@ interface Animal {
   rendimento_carcaca_real: number | null;
   dias_confinamento: number;
   gmd: number;
+  custo_alimentacao?: number;
+  consumo_racao?: number;
 }
 
 export default function Dashboard() {
@@ -897,6 +900,34 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* CONSUMO ACUMULADO DE RAÇÃO */}
+            <div className="glass-card" style={styles.card}>
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>Consumo Acumulado Ração</span>
+                <Scale size={20} color="var(--color-brand)" />
+              </div>
+              <div style={styles.cardValue}>
+                {(activeLote.consumo_racao_total || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} <span style={styles.unit}>kg</span>
+              </div>
+              <div style={styles.cardFooter}>
+                Consumo total de ração fornecido para este lote
+              </div>
+            </div>
+
+            {/* CUSTO ACUMULADO COM RAÇÃO */}
+            <div className="glass-card" style={styles.card}>
+              <div style={styles.cardHeader}>
+                <span style={styles.cardTitle}>Custo Acumulado Ração</span>
+                <DollarSign size={20} color="var(--color-brand)" />
+              </div>
+              <div style={styles.cardValue}>
+                R$ {activeLote.custo_tratos_total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+              </div>
+              <div style={styles.cardFooter}>
+                Custo total gasto com tratos/alimentação neste lote
+              </div>
+            </div>
+
             {/* CUSTO DE AQUISIÇÃO POR ANIMAL */}
             <div className="glass-card" style={styles.card}>
               <div style={styles.cardHeader}>
@@ -1218,6 +1249,7 @@ export default function Dashboard() {
                       <th style={styles.th}>Peso de Entrada</th>
                       <th style={styles.th}>Peso Atual/Saída</th>
                       <th style={styles.th}>GMD Individual</th>
+                      <th style={styles.th}>Ração / Custo</th>
                       <th style={styles.th}>Meta / Progresso</th>
                       <th style={styles.th}>Status</th>
                       <th style={styles.th}>Ações</th>
@@ -1261,6 +1293,14 @@ export default function Dashboard() {
                             <span style={{ color: 'var(--color-brand)', fontWeight: 600 }}>
                               +{animal.gmd.toFixed(3)} kg/dia
                             </span>
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>
+                              {(animal.consumo_racao || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-brand)', marginTop: '2px' }}>
+                              R$ {(animal.custo_alimentacao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
                           </td>
                           <td style={styles.td}>
                             <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>
@@ -1383,6 +1423,22 @@ export default function Dashboard() {
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>GMD Individual</div>
                           <strong style={{ color: 'var(--color-brand)', fontSize: '1.05rem' }}>
                             +{animal.gmd.toFixed(3)} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>kg/d</span>
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Alimentação Acumulada */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '0.5rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Ração Consumida</div>
+                          <strong style={{ color: '#fff', fontSize: '0.95rem' }}>
+                            {(animal.consumo_racao || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg
+                          </strong>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Custo Alimentação</div>
+                          <strong style={{ color: 'var(--color-brand)', fontSize: '0.95rem' }}>
+                            R$ {(animal.custo_alimentacao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </strong>
                         </div>
                       </div>

@@ -132,6 +132,7 @@ export async function DELETE(request: Request) {
 // PUT: Editar metadados do lote (nome, data de entrada, custo aquisição, rendimento previsto)
 export async function PUT(request: Request) {
   try {
+    const body = await request.json();
     const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida } = body;
 
     if (!id || !nome_lote) {

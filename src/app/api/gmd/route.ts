@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
       // Buscar tratos para rateio do custo de alimentação por animal
       const tratosLote = await sql`
-        SELECT data_trato, custo_total_trato 
+        SELECT data_trato, custo_total_trato, kg_alimentado 
         FROM tratos 
         WHERE lote_id = ${loteId}
       `;
@@ -65,6 +65,7 @@ export async function GET(request: Request) {
 
         // Ratear custos de alimentação do lote
         let custoAlimentacaoIndividual = 0;
+        let consumoRacaoIndividual = 0;
         tratosLote.forEach((trato: any) => {
           const dataTrato = new Date(trato.data_trato);
           // Contar quantos animais estavam ativos na data deste trato
@@ -75,9 +76,11 @@ export async function GET(request: Request) {
           }).length;
 
           if (activeCount > 0) {
+            const ent = new Date(animal.data_entrada);
             const sai = animal.data_saida ? new Date(animal.data_saida) : null;
-            if (dataTrato >= dEntrada && (!sai || dataTrato <= sai)) {
+            if (dataTrato >= ent && (!sai || dataTrato <= sai)) {
               custoAlimentacaoIndividual += parseFloat(trato.custo_total_trato) / activeCount;
+              consumoRacaoIndividual += parseFloat(trato.kg_alimentado) / activeCount;
             }
           }
         });
@@ -97,6 +100,7 @@ export async function GET(request: Request) {
           gmd: Math.max(0, gmd),
           custo_aquisicao: custoAquisicaoIndividual,
           custo_alimentacao: custoAlimentacaoIndividual,
+          consumo_racao: consumoRacaoIndividual,
           custo_total: custoAquisicaoIndividual + custoAlimentacaoIndividual
         };
       });
@@ -149,11 +153,13 @@ export async function GET(request: Request) {
       const diasConfinamento = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
       const totalTratosRes = await sql`
-        SELECT COALESCE(SUM(custo_total_trato), 0) as total_trato 
+        SELECT COALESCE(SUM(custo_total_trato), 0) as total_trato,
+               COALESCE(SUM(kg_alimentado), 0) as total_kg 
         FROM tratos 
         WHERE lote_id = ${loteId}
       `;
       const custoTratosTotal = parseFloat(totalTratosRes[0].total_trato);
+      const consumoRacaoTotal = parseFloat(totalTratosRes[0].total_kg);
 
       // Quantidade de animais ativos e vendidos
       const countRes = await sql`
@@ -248,6 +254,7 @@ export async function GET(request: Request) {
         gmd_lote: Math.max(0, gmdLote),
         custo_aquisicao: custoAquisicao,
         custo_tratos_total: custoTratosTotal,
+        consumo_racao_total: consumoRacaoTotal,
         custo_total_lote: custoAquisicao + custoTratosTotal,
         arrobas_produzidas_total: arrobasProduzidasTotal,
         custo_por_arroba_produzida: custoPorArrobaProduzida,
