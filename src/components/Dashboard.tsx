@@ -127,9 +127,14 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         setHistoricoPesagens(data.historico || []);
-        setAnimais(data.animais || []);
-        if (data.animais && data.animais.length > 0) {
-          setSelectedAnimalIdForChart(data.animais[0].id);
+        
+        const sortedAnimais = (data.animais || []).sort((a: any, b: any) => 
+          a.brinco.localeCompare(b.brinco, undefined, { numeric: true, sensitivity: 'base' })
+        );
+        setAnimais(sortedAnimais);
+        
+        if (sortedAnimais && sortedAnimais.length > 0) {
+          setSelectedAnimalIdForChart(sortedAnimais[0].id);
         } else {
           setSelectedAnimalIdForChart(null);
         }

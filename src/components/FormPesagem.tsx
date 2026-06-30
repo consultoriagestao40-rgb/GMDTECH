@@ -16,10 +16,10 @@ export default function FormPesagem() {
 
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Filtrar os animais pertencentes ao lote selecionado
-  const animaisFiltrados = localAnimais.filter(
-    (a) => a.lote_id === Number(selectedLoteId)
-  );
+  // Filtrar os animais pertencentes ao lote selecionado e ordenar de forma natural
+  const animaisFiltrados = localAnimais
+    .filter((a) => a.lote_id === Number(selectedLoteId))
+    .sort((a, b) => a.brinco.localeCompare(b.brinco, undefined, { numeric: true, sensitivity: 'base' }));
 
   // Pré-selecionar lote se houver apenas um
   useEffect(() => {
