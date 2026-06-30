@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut, Users } from 'lucide-react';
+import { BarChart3, PlusCircle, Wheat, Menu, X, Calculator, Sliders, TrendingUp, LogOut, Users, FileText, AlertTriangle } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -16,7 +16,9 @@ export default function Sidebar() {
     { name: 'Formulação Ração', href: '/formulacao', icon: <Calculator size={18} /> },
     { name: 'Premissas Trato', href: '/premissas', icon: <Sliders size={18} /> },
     { name: 'Fluxo e Resultados', href: '/fluxo', icon: <TrendingUp size={18} /> },
-    { name: 'Usuários', href: '/usuarios', icon: <Users size={18} /> }
+    { name: 'Usuários', href: '/usuarios', icon: <Users size={18} /> },
+    { name: 'Extratos', href: '/extrato', icon: <FileText size={18} />, className: 'desktop-only' },
+    { name: 'Histórico de Perdas', href: '/extrato?tab=perdas', icon: <AlertTriangle size={18} />, className: 'mobile-only' }
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -65,6 +67,7 @@ export default function Sidebar() {
               <Link 
                 key={item.href} 
                 href={item.href}
+                className={item.className || ''}
                 onClick={() => setIsOpen(false)}
                 style={{
                   ...styles.navLink,

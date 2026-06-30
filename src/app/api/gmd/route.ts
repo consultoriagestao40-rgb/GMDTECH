@@ -8,12 +8,17 @@ export async function GET(request: Request) {
   const loteIdParam = searchParams.get('lote_id');
 
   try {
+    // Garantir que a coluna peso_meta_saida exista na tabela de lotes
+    await sql`
+      ALTER TABLE lotes ADD COLUMN IF NOT EXISTS peso_meta_saida NUMERIC(10,2);
+    `;
+
     // 1. Caso de pesquisa detalhada de um lote específico (para o gráfico e tabela de animais)
     if (loteIdParam) {
       const loteId = parseInt(loteIdParam);
       
       const loteResult = await sql`
-        SELECT id, nome_lote, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias
+        SELECT id, nome_lote, data_entrada, peso_total_entrada, qtd_cabecas, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida
         FROM lotes 
         WHERE id = ${loteId}
       `;
@@ -130,7 +135,7 @@ export async function GET(request: Request) {
 
     // 2. Retornar dados agregados de todos os lotes para o Dashboard
     const lotesDb = await sql`
-      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias
+      SELECT id, nome_lote, qtd_cabecas, data_entrada, data_saida, peso_total_entrada, custo_aquisicao_total, status, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida
       FROM lotes 
       ORDER BY status ASC, data_entrada DESC
     `;

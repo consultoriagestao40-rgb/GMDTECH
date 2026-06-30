@@ -132,8 +132,7 @@ export async function DELETE(request: Request) {
 // PUT: Editar metadados do lote (nome, data de entrada, custo aquisição, rendimento previsto)
 export async function PUT(request: Request) {
   try {
-    const body = await request.json();
-    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias } = body;
+    const { id, nome_lote, data_entrada, custo_aquisicao_total, rendimento_carcaca_previsto, dias_adaptacao, taxa_adaptacao, taxa_engorda, gmd_estimado, ciclo_dias, peso_meta_saida } = body;
 
     if (!id || !nome_lote) {
       return NextResponse.json({ error: 'ID e Nome do lote são obrigatórios.' }, { status: 400 });
@@ -148,6 +147,7 @@ export async function PUT(request: Request) {
     const te = parseFloat(taxa_engorda || '2.2');
     const gmd = parseFloat(gmd_estimado || '1.500');
     const ciclo = parseInt(ciclo_dias || '90');
+    const pesoMeta = peso_meta_saida ? parseFloat(peso_meta_saida) : null;
 
     await sql`
       UPDATE lotes 
@@ -159,7 +159,8 @@ export async function PUT(request: Request) {
           taxa_adaptacao = ${ta},
           taxa_engorda = ${te},
           gmd_estimado = ${gmd},
-          ciclo_dias = ${ciclo}
+          ciclo_dias = ${ciclo},
+          peso_meta_saida = ${pesoMeta}
       WHERE id = ${loteId}
     `;
 

@@ -25,6 +25,7 @@ interface LoteStats {
   rendimento_carcaca_previsto: number;
   gmd_estimado: number;
   ciclo_dias: number;
+  peso_meta_saida?: number | null;
 }
 
 interface PesagemHistorico {
@@ -68,7 +69,7 @@ export default function Dashboard() {
 
   // Estados para Ações Individuais (Modais)
   const [activeAnimalId, setActiveAnimalId] = useState<number | null>(null);
-  const [modalMode, setModalMode] = useState<'pesagem' | 'venda' | 'edicao' | 'cadastro' | null>(null);
+  const [modalMode, setModalMode] = useState<'pesagem' | 'venda' | 'edicao' | 'cadastro' | 'exclusao' | null>(null);
   
   // Inputs dos Modais
   const [modalPeso, setModalPeso] = useState<string>('');
@@ -77,6 +78,8 @@ export default function Dashboard() {
   const [modalVendaPesoSaida, setModalVendaPesoSaida] = useState<string>('');
   const [modalVendaPrecoArroba, setModalVendaPrecoArroba] = useState<string>('300.00');
   const [modalVendaRendimento, setModalVendaRendimento] = useState<string>('54.0');
+  const [modalMotivo, setModalMotivo] = useState<string>('Erro de Cadastro');
+  const [modalObservacoes, setModalObservacoes] = useState<string>('');
  
   // Estados para Busca e Filtro de Brincos
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -99,6 +102,7 @@ export default function Dashboard() {
   const [editLoteCusto, setEditLoteCusto] = useState<string>('');
   const [editLoteRendimento, setEditLoteRendimento] = useState<string>('');
   const [editLoteCiclo, setEditLoteCiclo] = useState<string>('90');
+  const [editLotePesoMeta, setEditLotePesoMeta] = useState<string>('');
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -266,6 +270,7 @@ export default function Dashboard() {
     setEditLoteCusto(String(activeLote.custo_aquisicao));
     setEditLoteRendimento(String(activeLote.rendimento_carcaca_previsto || '54.0'));
     setEditLoteCiclo(String(activeLote.ciclo_dias || '90'));
+    setEditLotePesoMeta(activeLote.peso_meta_saida ? String(activeLote.peso_meta_saida) : '');
     setShowEditLoteModal(true);
     setFormError(null);
     setFormSuccess(null);
@@ -293,7 +298,8 @@ export default function Dashboard() {
           data_entrada: editLoteDataEntrada,
           custo_aquisicao_total: parseFloat(editLoteCusto) || 0,
           rendimento_carcaca_previsto: parseFloat(editLoteRendimento) || 54.0,
-          ciclo_dias: parseInt(editLoteCiclo) || 90
+          ciclo_dias: parseInt(editLoteCiclo) || 90,
+          peso_meta_saida: editLotePesoMeta ? parseFloat(editLotePesoMeta) : null
         })
       });
 
@@ -328,15 +334,25 @@ export default function Dashboard() {
     try {
       let url = '/api/animais';
       let method = 'POST';
-      let body: any = {};
+      let body: any = null; // null por padrão para DELETE
 
       if (modalMode === 'cadastro') {
-        body.lote_id = selectedLoteId;
-        body.brinco = modalBrinco;
-        body.peso_entrada = parseFloat(modalPeso);
-        body.data_entrada = modalDataEntrada;
+        method = 'POST';
+        body = {
+          lote_id: selectedLoteId,
+          brinco: modalBrinco,
+          peso_entrada: parseFloat(modalPeso),
+          data_entrada: modalDataEntrada
+        };
+      } else if (modalMode === 'exclusao') {
+        method = 'DELETE';
+        const motivoCompleto = modalObservacoes.trim() 
+          ? `${modalMotivo} - ${modalObservacoes.trim()}`
+          : modalMotivo;
+        url = `/api/animais?animal_id=${activeAnimalId}&motivo=${encodeURIComponent(motivoCompleto)}`;
       } else {
-        body.animal_id = activeAnimalId;
+        method = 'POST';
+        body = { animal_id: activeAnimalId };
         if (modalMode === 'pesagem') {
           body.peso = parseFloat(modalPeso);
         } else if (modalMode === 'edicao') {
@@ -353,7 +369,7 @@ export default function Dashboard() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: body ? JSON.stringify(body) : undefined
       });
 
       if (!response.ok) {
@@ -378,7 +394,7 @@ export default function Dashboard() {
     }
   };
 
-  const openModal = (animal: Animal, mode: 'pesagem' | 'venda' | 'edicao') => {
+  const openModal = (animal: Animal, mode: 'pesagem' | 'venda' | 'edicao' | 'exclusao') => {
     setActiveAnimalId(animal.id);
     setModalMode(mode);
     setModalPeso('');
@@ -387,6 +403,8 @@ export default function Dashboard() {
     setModalVendaPesoSaida(String(animal.peso_atual));
     setModalVendaPrecoArroba('300.00');
     setModalVendaRendimento('54.0');
+    setModalMotivo('Erro de Cadastro');
+    setModalObservacoes('');
     setFormError(null);
     setFormSuccess(null);
   };
@@ -397,6 +415,8 @@ export default function Dashboard() {
     setModalPeso('');
     setModalBrinco('');
     setModalDataEntrada(new Date().toISOString().split('T')[0]);
+    setModalMotivo('Erro de Cadastro');
+    setModalObservacoes('');
     setFormError(null);
     setFormSuccess(null);
   };
@@ -1208,10 +1228,14 @@ export default function Dashboard() {
                       const ciclo = activeLote?.ciclo_dias || 90;
                       const gmdEstimado = activeLote?.gmd_estimado || 1.5;
                       const ganhoMeta = ciclo * gmdEstimado;
-                      const pesoMeta = animal.peso_entrada + ganhoMeta;
+                      const pesoMeta = activeLote?.peso_meta_saida 
+                        ? parseFloat(activeLote.peso_meta_saida as any) 
+                        : (animal.peso_entrada + ganhoMeta);
                       const pesoAtual = animal.status === 'vendido' ? (animal.peso_saida || animal.peso_atual) : animal.peso_atual;
                       const ganhoAtual = pesoAtual - animal.peso_entrada;
-                      const progressoPct = ganhoMeta > 0 ? (ganhoAtual / ganhoMeta) * 100 : 0;
+                      // O ganho esperado total é (pesoMeta - peso_entrada)
+                      const ganhoMetaReal = pesoMeta - animal.peso_entrada;
+                      const progressoPct = ganhoMetaReal > 0 ? (ganhoAtual / ganhoMetaReal) * 100 : 0;
 
                       return (
                         <tr key={animal.id} style={styles.tr}>
@@ -1291,6 +1315,13 @@ export default function Dashboard() {
                                 >
                                   Editar
                                 </button>
+                                <button 
+                                  onClick={() => openModal(animal, 'exclusao')} 
+                                  style={{ ...styles.actionBtn, color: 'var(--color-danger)' }} 
+                                  title="Excluir/Remover animal por perda"
+                                >
+                                  Excluir
+                                </button>
                               </div>
                             ) : (
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -1311,10 +1342,13 @@ export default function Dashboard() {
                   const ciclo = activeLote?.ciclo_dias || 90;
                   const gmdEstimado = activeLote?.gmd_estimado || 1.5;
                   const ganhoMeta = ciclo * gmdEstimado;
-                  const pesoMeta = animal.peso_entrada + ganhoMeta;
+                  const pesoMeta = activeLote?.peso_meta_saida 
+                    ? parseFloat(activeLote.peso_meta_saida as any) 
+                    : (animal.peso_entrada + ganhoMeta);
                   const pesoAtual = animal.status === 'vendido' ? (animal.peso_saida || animal.peso_atual) : animal.peso_atual;
                   const ganhoAtual = pesoAtual - animal.peso_entrada;
-                  const progressoPct = ganhoMeta > 0 ? (ganhoAtual / ganhoMeta) * 100 : 0;
+                  const ganhoMetaReal = pesoMeta - animal.peso_entrada;
+                  const progressoPct = ganhoMetaReal > 0 ? (ganhoAtual / ganhoMetaReal) * 100 : 0;
 
                   return (
                     <div key={animal.id} className="glass-card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -1406,6 +1440,13 @@ export default function Dashboard() {
                             >
                               Editar
                             </button>
+                            <button 
+                              onClick={() => openModal(animal, 'exclusao')} 
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.6rem 0.8rem', borderRadius: '6px', backgroundColor: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.15)', cursor: 'pointer', minHeight: '42px' }} 
+                              title="Excluir animal"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         ) : (
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '0.35rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
@@ -1437,6 +1478,7 @@ export default function Dashboard() {
               {modalMode === 'edicao' && 'Editar Identificação do Brinco'}
               {modalMode === 'venda' && 'Venda / Saída de Cabeça de Gado'}
               {modalMode === 'cadastro' && 'Cadastrar Novo Animal no Lote'}
+              {modalMode === 'exclusao' && 'Registrar Perda / Exclusão de Animal'}
             </h3>
 
             <form onSubmit={handleAnimalAction} style={styles.modalForm}>
@@ -1560,6 +1602,41 @@ export default function Dashboard() {
                 </div>
               )}
 
+              {/* Modo Exclusão / Perda de Animal */}
+              {modalMode === 'exclusao' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <p style={{ color: 'var(--color-danger)', fontSize: '0.85rem', fontWeight: 600, padding: '0.5rem', backgroundColor: 'rgba(239, 68, 68, 0.08)', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.15)', margin: 0 }}>
+                    ⚠️ ATENÇÃO: A exclusão removerá este brinco do lote ativo permanentemente para que os cálculos de ração/cabeça fiquem corretos. A perda ficará registrada no Histórico de Perdas.
+                  </p>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Motivo da Perda/Remoção:</label>
+                    <select 
+                      value={modalMotivo}
+                      onChange={(e) => setModalMotivo(e.target.value)}
+                      style={styles.input}
+                      required
+                    >
+                      <option value="Erro de Cadastro">Erro de Cadastro</option>
+                      <option value="Morte / Doença">Morte / Doença</option>
+                      <option value="Acidente / Lesão">Acidente / Lesão</option>
+                      <option value="Roubo / Fuga">Roubo / Fuga</option>
+                      <option value="Descarte Técnico">Descarte Técnico</option>
+                      <option value="Outro (Descrever nas observações)">Outro (Descrever nas observações)</option>
+                    </select>
+                  </div>
+                  <div style={styles.inputField}>
+                    <label style={styles.inputLabel}>Observações / Descrição:</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ex: Animal apresentou sintomas de timpanismo..."
+                      value={modalObservacoes}
+                      onChange={(e) => setModalObservacoes(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Botões do Modal */}
               <div style={styles.modalActions}>
                 <button type="submit" disabled={submittingAction} style={styles.modalSubmitBtn}>
@@ -1632,6 +1709,17 @@ export default function Dashboard() {
                   onChange={(e) => setEditLoteCiclo(e.target.value)}
                   style={styles.input}
                   required
+                />
+              </div>
+              <div style={styles.inputField}>
+                <label style={styles.inputLabel}>Peso Vivo Meta de Saída (kg):</label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  placeholder="Deixe vazio para usar a projeção GMD"
+                  value={editLotePesoMeta}
+                  onChange={(e) => setEditLotePesoMeta(e.target.value)}
+                  style={styles.input}
                 />
               </div>
               <div style={styles.modalActions}>

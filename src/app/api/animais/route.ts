@@ -251,3 +251,85 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Erro no Neon DB', details: error.message }, { status: 500 });
   }
 }
+
+// DELETE: Excluir/Remover um animal do lote (por perda/morte ou erro de cadastro) e registrar o log
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const animalIdParam = searchParams.get('animal_id');
+    const motivo = searchParams.get('motivo') || 'Não informado';
+
+    if (!animalIdParam) {
+      return NextResponse.json({ error: 'ID do animal é obrigatório.' }, { status: 400 });
+    }
+
+    const animalId = parseInt(animalIdParam);
+
+    // 1. Garantir que a tabela de perdas_animais exista
+    await sql`
+      CREATE TABLE IF NOT EXISTS perdas_animais (
+        id SERIAL PRIMARY KEY,
+        lote_id INTEGER NOT NULL,
+        nome_lote VARCHAR(255) NOT NULL,
+        brinco VARCHAR(50) NOT NULL,
+        peso_entrada NUMERIC(10,2) NOT NULL,
+        peso_atual NUMERIC(10,2) NOT NULL,
+        motivo VARCHAR(255) NOT NULL,
+        data_perda TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // 2. Buscar informações detalhadas do animal e do lote antes da exclusão
+    const animalResult = await sql`
+      SELECT a.id, a.lote_id, a.brinco, a.peso_entrada, l.nome_lote,
+             COALESCE(
+               (SELECT p.peso FROM pesagens p WHERE p.animal_id = a.id ORDER BY p.data_pesagem DESC LIMIT 1),
+               a.peso_entrada
+             ) as peso_atual
+      FROM animais a
+      JOIN lotes l ON a.lote_id = l.id
+      WHERE a.id = ${animalId}
+    `;
+
+    if (animalResult.length === 0) {
+      return NextResponse.json({ error: 'Animal não encontrado.' }, { status: 404 });
+    }
+
+    const animal = animalResult[0];
+
+    // 3. Registrar o log de perda na tabela 'perdas_animais'
+    await sql`
+      INSERT INTO perdas_animais (lote_id, nome_lote, brinco, peso_entrada, peso_atual, motivo)
+      VALUES (${animal.lote_id}, ${animal.nome_lote}, ${animal.brinco}, ${animal.peso_entrada}, ${animal.peso_atual}, ${motivo})
+    `;
+
+    // 4. Deletar as pesagens associadas para manter o banco íntegro
+    await sql`
+      DELETE FROM pesagens 
+      WHERE animal_id = ${animalId}
+    `;
+
+    // 5. Deletar o animal da tabela 'animais'
+    await sql`
+      DELETE FROM animais 
+      WHERE id = ${animalId}
+    `;
+
+    // 6. Atualizar contagem de cabeças e peso total de entrada no lote correspondente
+    await sql`
+      UPDATE lotes 
+      SET qtd_cabecas = GREATEST(0, qtd_cabecas - 1),
+          peso_total_entrada = GREATEST(0, peso_total_entrada - ${animal.peso_entrada})
+      WHERE id = ${animal.lote_id}
+    `;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Animal removido do lote com sucesso e registrado no histórico de perdas!'
+    }, { status: 200 });
+
+  } catch (error: any) {
+    console.error('Erro ao excluir animal:', error);
+    return NextResponse.json({ error: 'Erro ao processar exclusão no Neon DB.', details: error.message }, { status: 500 });
+  }
+}
