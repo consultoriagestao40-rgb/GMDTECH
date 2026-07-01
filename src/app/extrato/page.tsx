@@ -28,6 +28,7 @@ interface TratoFormatado {
   custo_total: number;
   custo_medio: number;
   cabecas_na_data: number;
+  automatico?: boolean;
 }
 
 interface Perda {
@@ -239,7 +240,14 @@ function ExtratoPageContent() {
                           <tr key={trato.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <td style={styles.td}>{new Date(trato.data).toLocaleString('pt-BR')}</td>
                             <td style={styles.td}><strong style={{ color: '#fff' }}>{trato.nome_lote}</strong></td>
-                            <td style={styles.td}>{trato.nome_dieta}</td>
+                            <td style={styles.td}>
+                              {trato.nome_dieta}
+                              {trato.automatico && (
+                                <span style={styles.autoBadge} title="Lançado automaticamente pelo sistema">
+                                  Auto
+                                </span>
+                              )}
+                            </td>
                             <td style={styles.td}>{trato.quantidade_total.toLocaleString('pt-BR')} kg</td>
                             <td style={styles.td}>
                               <strong style={{ color: 'var(--color-brand)' }}>{trato.quantidade_media.toFixed(2)}</strong> kg/cab
@@ -391,6 +399,19 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '1rem 0.75rem',
     fontSize: '0.85rem',
     color: 'var(--text-secondary)'
+  },
+  autoBadge: {
+    display: 'inline-block',
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    color: 'var(--color-accent)',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    marginLeft: '8px',
+    border: '1px solid rgba(245, 158, 11, 0.25)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em'
   }
 };
 

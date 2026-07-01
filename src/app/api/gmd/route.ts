@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
+import { verificarEInserirTratosAutomaticos } from '../../../db/auto-trato';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,9 @@ export async function GET(request: Request) {
   const loteIdParam = searchParams.get('lote_id');
 
   try {
+    // Verificar e inserir lançamentos de tratos automáticos pendentes
+    await verificarEInserirTratosAutomaticos();
+
     // Garantir que a coluna peso_meta_saida exista na tabela de lotes
     await sql`
       ALTER TABLE lotes ADD COLUMN IF NOT EXISTS peso_meta_saida NUMERIC(10,2);

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { sql } from '../../../db/neon';
+import { verificarEInserirTratosAutomaticos } from '../../../db/auto-trato';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // Verificar e inserir lançamentos de tratos automáticos pendentes
+    await verificarEInserirTratosAutomaticos();
+
     // 1. Garantir que a tabela de perdas exista
     await sql`
       CREATE TABLE IF NOT EXISTS perdas_animais (
@@ -29,7 +33,7 @@ export async function GET() {
     // 3. Buscar extrato de lançamentos de ração (Tratos)
     // Calcula as cabeças de gado aproximadas ativas no lote na data do trato
     const tratos = await sql`
-      SELECT t.id, t.lote_id, t.dieta_id, t.kg_alimentado, t.custo_total_trato, t.data_trato,
+      SELECT t.id, t.lote_id, t.dieta_id, t.kg_alimentado, t.custo_total_trato, t.data_trato, t.automatico,
              l.nome_lote, d.nome_dieta,
              COALESCE(
                (
@@ -63,7 +67,8 @@ export async function GET() {
         quantidade_media: kg / cabecas,
         custo_total: custo,
         custo_medio: custo / cabecas,
-        cabecas_na_data: cabecas
+        cabecas_na_data: cabecas,
+        automatico: !!trato.automatico
       };
     });
 
